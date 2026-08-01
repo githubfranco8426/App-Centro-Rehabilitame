@@ -1,13 +1,20 @@
 import Link from "next/link";
 import { addDays, format, startOfMonth, subDays } from "date-fns";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { MiniCalendario } from "@/components/admin/mini-calendario";
 import { ProfesionalFilter } from "@/components/admin/profesional-filter";
+import { ZONA_HORARIA } from "@/lib/tiempo";
 
-const HORAS = Array.from({ length: 11 }, (_, i) => 9 + i); // 09:00 – 19:00
+// Franjas de 30 min, 09:00 – 19:00.
+const HORAS = Array.from({ length: 21 }, (_, i) => {
+  const totalMin = 9 * 60 + i * 30;
+  return `${String(Math.floor(totalMin / 60)).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
+});
 const COLORES_AVATAR = ["bg-primary text-primary-foreground", "bg-accent text-accent-foreground"];
+const COLORES_CITA = ["border-primary bg-primary/10", "border-accent bg-accent/10"];
 
 function capitalizar(texto: string) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
@@ -20,6 +27,11 @@ function iniciales(nombre: string) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+}
+
+function unico<T>(valor: T | T[] | null): T | null {
+  if (!valor) return null;
+  return Array.isArray(valor) ? (valor[0] ?? null) : valor;
 }
 
 export default async function AdminAgendaPage({
@@ -53,6 +65,19 @@ export default async function AdminAgendaPage({
     .order("nombre");
 
   const profesionales = profesionalesFiltrados ?? [];
+
+  const fechaStr = format(fecha, "yyyy-MM-dd");
+  const inicioDia = fromZonedTime(`${fechaStr}T00:00:00`, ZONA_HORARIA);
+  const finDia = fromZonedTime(`${format(addDays(fecha, 1), "yyyy-MM-dd")}T00:00:00`, ZONA_HORARIA);
+
+  const { data: citasData } = await supabase
+    .from("citas")
+    .select("id, fecha_inicio, profesional_id, servicios(nombre), profiles!citas_paciente_id_fkey(nombre)")
+    .gte("fecha_inicio", inicioDia.toISOString())
+    .lt("fecha_inicio", finDia.toISOString())
+    .neq("estado", "cancelada");
+
+  const citas = citasData ?? [];
 
   return (
     <div className="flex flex-1">
@@ -140,12 +165,28 @@ export default async function AdminAgendaPage({
                 className="grid border-b"
                 style={{ gridTemplateColumns: `4rem repeat(${profesionales.length}, minmax(200px, 1fr))` }}
               >
-                <div className="px-2 py-3 text-right text-xs text-muted-foreground">
-                  {String(hora).padStart(2, "0")}:00
-                </div>
-                {profesionales.map((p) => (
-                  <div key={p.id} className="h-14 border-l" />
-                ))}
+                <div className="px-2 py-3 text-right text-xs text-muted-foreground">{hora}</div>
+                {profesionales.map((p, i) => {
+                  const cita = citas.find(
+                    (c) =>
+                      c.profesional_id === p.id &&
+                      formatInTimeZone(new Date(c.fecha_inicio), ZONA_HORARIA, "HH:mm") === hora,
+                  );
+                  const servicio = cita ? unico(cita.servicios) : null;
+                  const paciente = cita ? unico(cita.profiles) : null;
+                  return (
+                    <div key={p.id} className="h-14 border-l p-0.5">
+                      {cita && (
+                        <div
+                          className={`h-full rounded border-l-2 px-2 py-1 text-xs ${COLORES_CITA[i % COLORES_CITA.length]}`}
+                        >
+                          <p className="font-medium leading-tight">{paciente?.nombre}</p>
+                          <p className="leading-tight text-muted-foreground">{servicio?.nombre}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
