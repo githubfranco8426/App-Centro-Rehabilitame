@@ -1,22 +1,24 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
 
-const especialidades = [
-  {
-    nombre: "Kinesiología",
-    descripcion: "Respiratorio infantil, respiratorio adulto y maxilofacial.",
-  },
-  {
-    nombre: "Fonoaudiología",
-    descripcion: "Frenillo lingual corto, lactancia, respiración oral y neuro-adultos.",
-  },
-  {
-    nombre: "Terapia Ocupacional",
-    descripcion: "Servicios a definir por el equipo del centro.",
-  },
-];
+const descripciones: Record<string, string> = {
+  Kinesiología: "Respiratorio infantil, respiratorio adulto y maxilofacial.",
+  Fonoaudiología: "Frenillo lingual corto, lactancia, respiración oral y neuro-adultos.",
+  "Terapia Ocupacional": "Servicios a definir por el equipo del centro.",
+};
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: especialidades, error } = await supabase
+    .from("especialidades")
+    .select("id, nombre")
+    .order("created_at");
+
+  if (error) {
+    throw new Error(`No se pudo conectar a Supabase: ${error.message}`);
+  }
+
   return (
     <div className="flex flex-1 flex-col items-center bg-zinc-50 dark:bg-black">
       <main className="flex w-full max-w-3xl flex-1 flex-col items-center gap-10 px-6 py-24 sm:items-start">
@@ -31,10 +33,12 @@ export default function Home() {
 
         <div className="grid w-full gap-4 sm:grid-cols-3">
           {especialidades.map((especialidad) => (
-            <Card key={especialidad.nombre}>
+            <Card key={especialidad.id}>
               <CardHeader>
                 <CardTitle>{especialidad.nombre}</CardTitle>
-                <CardDescription>{especialidad.descripcion}</CardDescription>
+                <CardDescription>
+                  {descripciones[especialidad.nombre] ?? ""}
+                </CardDescription>
               </CardHeader>
             </Card>
           ))}
