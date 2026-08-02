@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCLP } from "@/lib/dinero";
 
 type ServicioRow = {
   id: string;
   nombre: string;
   duracion_minutos: number;
+  precio: number | null;
   especialidades: { nombre: string } | { nombre: string }[] | null;
 };
 
@@ -19,7 +21,7 @@ export default async function ReservarPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("servicios")
-    .select("id, nombre, duracion_minutos, especialidades(nombre)")
+    .select("id, nombre, duracion_minutos, precio, especialidades(nombre)")
     .eq("activo", true)
     .order("nombre");
 
@@ -53,8 +55,13 @@ export default async function ReservarPage() {
                     <CardHeader>
                       <CardTitle className="text-base">{servicio.nombre}</CardTitle>
                     </CardHeader>
-                    <CardContent className="text-sm text-muted-foreground">
-                      {servicio.duracion_minutos} min
+                    <CardContent className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{servicio.duracion_minutos} min</span>
+                      {servicio.precio != null && (
+                        <span className="font-medium text-foreground">
+                          {formatCLP(servicio.precio)}
+                        </span>
+                      )}
                     </CardContent>
                   </Card>
                 </Link>

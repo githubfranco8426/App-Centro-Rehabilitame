@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmarReservaForm } from "@/components/reservar/confirmar-form";
 import { ZONA_HORARIA } from "@/lib/tiempo";
+import { formatCLP } from "@/lib/dinero";
 
 function capitalizar(texto: string) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
@@ -26,7 +27,7 @@ export default async function ConfirmarReservaPage({
 
   const { data: servicio } = await supabase
     .from("servicios")
-    .select("nombre, duracion_minutos")
+    .select("nombre, duracion_minutos, precio")
     .eq("id", servicioId)
     .single();
 
@@ -49,6 +50,7 @@ export default async function ConfirmarReservaPage({
             <p className="font-medium">{servicio.nombre}</p>
             <p className="text-muted-foreground">
               {servicio.duracion_minutos} min con {profesional.nombre}
+              {servicio.precio != null && ` — ${formatCLP(servicio.precio)}`}
             </p>
             <p className="mt-1 text-muted-foreground">
               {capitalizar(
