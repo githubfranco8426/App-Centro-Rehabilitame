@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,14 @@ export async function SiteHeader() {
 
   return (
     <header className="flex items-center justify-between border-b px-6 py-4">
-      <Link href="/" className="font-semibold">
+      <Link href="/" className="flex items-center gap-2 font-semibold">
+        <Image
+          src="/logo.jpg"
+          alt="Rehabilita.me"
+          width={32}
+          height={32}
+          className="size-8 rounded-full object-cover"
+        />
         Centro de Rehabilitación
       </Link>
       <nav className="flex items-center gap-4 text-sm">

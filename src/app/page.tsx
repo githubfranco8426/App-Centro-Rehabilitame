@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,7 +38,15 @@ export default async function Home() {
   return (
     <div className="flex flex-1 flex-col items-center bg-zinc-50 dark:bg-black">
       <main className="flex w-full max-w-3xl flex-1 flex-col items-center gap-10 px-6 py-24 sm:items-start">
-        <div className="flex flex-col gap-3 text-center sm:text-left">
+        <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+          <Image
+            src="/logo.jpg"
+            alt="Rehabilita.me"
+            width={96}
+            height={96}
+            className="size-24 rounded-full object-cover"
+            priority
+          />
           <h1 className="text-3xl font-semibold tracking-tight">
             Centro de Rehabilitación
           </h1>
