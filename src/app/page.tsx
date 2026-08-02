@@ -8,6 +8,21 @@ const descripciones: Record<string, string> = {
   "Terapia Ocupacional": "Servicios a definir por el equipo del centro.",
 };
 
+// Kinesiología usa el sky blue y Fonoaudiología el terracota del tema
+// (--primary / --accent en globals.css); Terapia Ocupacional suma verde
+// esmeralda como tercer color, solo para estas tarjetas.
+const coloresEspecialidad: Record<string, string> = {
+  Kinesiología: "border-primary/30 hover:border-primary bg-primary/5",
+  Fonoaudiología: "border-accent/30 hover:border-accent bg-accent/5",
+  "Terapia Ocupacional": "border-emerald-500/30 hover:border-emerald-500 bg-emerald-500/5",
+};
+
+const tituloColorEspecialidad: Record<string, string> = {
+  Kinesiología: "text-primary",
+  Fonoaudiología: "text-accent",
+  "Terapia Ocupacional": "text-emerald-600 dark:text-emerald-400",
+};
+
 export default async function Home() {
   const supabase = await createClient();
   const { data: especialidades, error } = await supabase
@@ -34,9 +49,13 @@ export default async function Home() {
         <div className="grid w-full gap-4 sm:grid-cols-3">
           {especialidades.map((especialidad) => (
             <Link key={especialidad.id} href={`/reservar?especialidad=${especialidad.id}`}>
-              <Card className="h-full transition-colors hover:border-primary">
+              <Card
+                className={`h-full transition-colors ${coloresEspecialidad[especialidad.nombre] ?? "hover:border-primary"}`}
+              >
                 <CardHeader>
-                  <CardTitle>{especialidad.nombre}</CardTitle>
+                  <CardTitle className={tituloColorEspecialidad[especialidad.nombre] ?? ""}>
+                    {especialidad.nombre}
+                  </CardTitle>
                   <CardDescription>
                     {descripciones[especialidad.nombre] ?? ""}
                   </CardDescription>
