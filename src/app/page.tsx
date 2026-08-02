@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
@@ -44,9 +45,9 @@ export default async function Home() {
           ))}
         </div>
 
-        <Button size="lg" disabled>
-          Reservar hora (próximamente)
-        </Button>
+        <Link href="/reservar">
+          <Button size="lg">Reservar hora</Button>
+        </Link>
       </main>
     </div>
   );
