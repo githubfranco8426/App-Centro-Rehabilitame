@@ -1,10 +1,18 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { fromZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { loginSchema, registroSchema } from "@/lib/validaciones/auth";
+import { ZONA_HORARIA } from "@/lib/tiempo";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+function unico<T>(valor: T | T[] | null): T | null {
+  if (!valor) return null;
+  return Array.isArray(valor) ? (valor[0] ?? null) : valor;
+}
 
 const reservaSchema = z.object({
   servicioId: z.uuid(),
@@ -79,6 +87,106 @@ export async function registrarYReservar(formData: FormData) {
   }
 
   redirect("/mis-horas");
+}
+
+const ESTADOS_CITA = ["pendiente", "confirmada", "cancelada", "completada", "no_asistio"] as const;
+
+const cambiarEstadoSchema = z.object({
+  estado: z.enum(ESTADOS_CITA),
+});
+
+export async function cambiarEstadoCita(citaId: string, formData: FormData): Promise<void> {
+  const path = `/admin/citas/${citaId}`;
+  const parsed = cambiarEstadoSchema.safeParse({ estado: formData.get("estado") });
+  if (!parsed.success) {
+    redirect(`${path}?error=${encodeURIComponent("Estado inválido.")}`);
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const update: { estado: (typeof ESTADOS_CITA)[number]; cancelada_por?: string } = {
+    estado: parsed.data.estado,
+  };
+  if (parsed.data.estado === "cancelada") {
+    update.cancelada_por = user?.id;
+  }
+
+  const { error } = await supabase.from("citas").update(update).eq("id", citaId);
+  if (error) {
+    redirect(`${path}?error=${encodeURIComponent("No se pudo actualizar: " + error.message)}`);
+  }
+
+  revalidatePath(path);
+  revalidatePath("/admin");
+  redirect(path);
+}
+
+const reagendarAdminSchema = z.object({
+  fechaInicio: z.string().min(1),
+});
+
+export async function reagendarCitaAdmin(citaId: string, formData: FormData): Promise<void> {
+  const path = `/admin/citas/${citaId}`;
+  const parsed = reagendarAdminSchema.safeParse({ fechaInicio: formData.get("fechaInicio") });
+  if (!parsed.success) {
+    redirect(`${path}?error=${encodeURIComponent("Fecha inválida.")}`);
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: citaOriginal, error: fetchError } = await supabase
+    .from("citas")
+    .select("paciente_id, profesional_id, servicio_id, servicios(duracion_minutos)")
+    .eq("id", citaId)
+    .single();
+
+  if (fetchError || !citaOriginal) {
+    redirect(`${path}?error=${encodeURIComponent("No se encontró la cita.")}`);
+  }
+
+  const servicio = unico(citaOriginal.servicios);
+  const duracionMinutos = servicio?.duracion_minutos ?? 30;
+
+  const nuevaFechaInicio = fromZonedTime(parsed.data.fechaInicio, ZONA_HORARIA);
+  const nuevaFechaFin = new Date(nuevaFechaInicio.getTime() + duracionMinutos * 60_000);
+
+  // Se crea la nueva cita ANTES de cancelar la original: si el horario elegido
+  // choca con el constraint anti-colisión, la original queda intacta.
+  const { data: nuevaCita, error: insertError } = await supabase
+    .from("citas")
+    .insert({
+      paciente_id: citaOriginal.paciente_id,
+      profesional_id: citaOriginal.profesional_id,
+      servicio_id: citaOriginal.servicio_id,
+      fecha_inicio: nuevaFechaInicio.toISOString(),
+      fecha_fin: nuevaFechaFin.toISOString(),
+      estado: "confirmada",
+      creada_por: user?.id,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !nuevaCita) {
+    const mensaje =
+      insertError?.code === "23P01"
+        ? "Ese horario ya está ocupado por otra cita."
+        : "No se pudo reagendar: " + (insertError?.message ?? "");
+    redirect(`${path}?error=${encodeURIComponent(mensaje)}`);
+  }
+
+  await supabase
+    .from("citas")
+    .update({ estado: "cancelada", cancelada_por: user?.id })
+    .eq("id", citaId);
+
+  revalidatePath("/admin");
+  redirect(`/admin/citas/${nuevaCita.id}?reagendada=1`);
 }
 
 export async function iniciarSesionYReservar(formData: FormData) {

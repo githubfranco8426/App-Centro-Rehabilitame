@@ -177,12 +177,13 @@ export default async function AdminAgendaPage({
                   return (
                     <div key={p.id} className="h-14 border-l p-0.5">
                       {cita && (
-                        <div
-                          className={`h-full rounded border-l-2 px-2 py-1 text-xs ${COLORES_CITA[i % COLORES_CITA.length]}`}
+                        <Link
+                          href={`/admin/citas/${cita.id}`}
+                          className={`block h-full rounded border-l-2 px-2 py-1 text-xs hover:opacity-80 ${COLORES_CITA[i % COLORES_CITA.length]}`}
                         >
                           <p className="font-medium leading-tight">{paciente?.nombre}</p>
                           <p className="leading-tight text-muted-foreground">{servicio?.nombre}</p>
-                        </div>
+                        </Link>
                       )}
                     </div>
                   );
