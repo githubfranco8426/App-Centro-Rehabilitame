@@ -31,7 +31,13 @@ export function ProfesionalFilter({
   return (
     <Select defaultValue={searchParams.get("profesional") ?? "todos"} onValueChange={onChange}>
       <SelectTrigger className="w-full">
-        <SelectValue />
+        <SelectValue>
+          {(value: string | null) =>
+            !value || value === "todos"
+              ? "Todos"
+              : (profesionales.find((p) => p.id === value)?.nombre ?? "Todos")
+          }
+        </SelectValue>
       </SelectTrigger>
       <SelectContent>
         <SelectItem value="todos">Todos</SelectItem>
