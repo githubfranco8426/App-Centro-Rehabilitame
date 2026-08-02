@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ZONA_HORARIA } from "@/lib/tiempo";
+import { cancelarCitaPaciente } from "@/lib/citas/actions";
+import { puedeGestionarCita } from "@/lib/citas/reglas";
 
 type CitaRow = {
   id: string;
@@ -32,7 +34,12 @@ const ESTADO_LABEL: Record<string, string> = {
   no_asistio: "No asistió",
 };
 
-export default async function MisHorasPage() {
+export default async function MisHorasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; cancelada?: string; reagendada?: string }>;
+}) {
+  const { error, cancelada, reagendada } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -56,6 +63,10 @@ export default async function MisHorasPage() {
           </Link>
         </div>
 
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+        {cancelada && <p className="mt-4 text-sm text-green-600">Cita cancelada.</p>}
+        {reagendada && <p className="mt-4 text-sm text-green-600">Cita reagendada con éxito.</p>}
+
         {citas.length === 0 ? (
           <p className="mt-8 text-sm text-muted-foreground">
             Todavía no tenés horas reservadas.
@@ -65,6 +76,7 @@ export default async function MisHorasPage() {
             {citas.map((cita) => {
               const servicio = unico(cita.servicios);
               const profesional = unico(cita.profesionales);
+              const gestionable = puedeGestionarCita(cita.fecha_inicio, cita.estado);
               return (
                 <Card key={cita.id}>
                   <CardHeader className="flex-row items-center justify-between space-y-0">
@@ -83,6 +95,20 @@ export default async function MisHorasPage() {
                       ),
                     )}
                     {profesional && ` — con ${profesional.nombre}`}
+                    {gestionable && (
+                      <div className="mt-3 flex gap-2">
+                        <Link href={`/mis-horas/${cita.id}/reagendar`}>
+                          <Button size="sm" variant="outline">
+                            Reagendar
+                          </Button>
+                        </Link>
+                        <form action={cancelarCitaPaciente.bind(null, cita.id)}>
+                          <Button size="sm" variant="ghost" type="submit">
+                            Cancelar
+                          </Button>
+                        </form>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );

@@ -7,6 +7,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { loginSchema, registroSchema } from "@/lib/validaciones/auth";
 import { ZONA_HORARIA } from "@/lib/tiempo";
+import { LEAD_TIME_MINUTOS_PACIENTE, puedeGestionarCita } from "@/lib/citas/reglas";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function unico<T>(valor: T | T[] | null): T | null {
@@ -216,4 +217,97 @@ export async function iniciarSesionYReservar(formData: FormData) {
   }
 
   redirect("/mis-horas");
+}
+
+export async function cancelarCitaPaciente(citaId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: cita } = await supabase
+    .from("citas")
+    .select("paciente_id, fecha_inicio, estado")
+    .eq("id", citaId)
+    .single();
+
+  if (!cita || cita.paciente_id !== user.id) {
+    redirect(`/mis-horas?error=${encodeURIComponent("No se encontró la cita.")}`);
+  }
+
+  if (!puedeGestionarCita(cita.fecha_inicio, cita.estado)) {
+    redirect(
+      `/mis-horas?error=${encodeURIComponent(
+        `Para cancelar necesitás avisar con al menos ${LEAD_TIME_MINUTOS_PACIENTE / 60} horas de anticipación.`,
+      )}`,
+    );
+  }
+
+  await supabase.from("citas").update({ estado: "cancelada", cancelada_por: user.id }).eq("id", citaId);
+
+  revalidatePath("/mis-horas");
+  redirect("/mis-horas?cancelada=1");
+}
+
+export async function reagendarCitaPaciente(
+  citaId: string,
+  fechaInicio: string,
+  fechaFin: string,
+): Promise<void> {
+  const path = `/mis-horas/${citaId}/reagendar`;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: cita } = await supabase
+    .from("citas")
+    .select("paciente_id, profesional_id, servicio_id, fecha_inicio, estado")
+    .eq("id", citaId)
+    .single();
+
+  if (!cita || cita.paciente_id !== user.id) {
+    redirect(`/mis-horas?error=${encodeURIComponent("No se encontró la cita.")}`);
+  }
+
+  if (!puedeGestionarCita(cita.fecha_inicio, cita.estado)) {
+    redirect(
+      `/mis-horas?error=${encodeURIComponent(
+        `Para reagendar necesitás avisar con al menos ${LEAD_TIME_MINUTOS_PACIENTE / 60} horas de anticipación.`,
+      )}`,
+    );
+  }
+
+  // Se crea la nueva cita ANTES de cancelar la original: si el horario elegido
+  // choca con el constraint anti-colisión, la original queda intacta.
+  const { data: nuevaCita, error: insertError } = await supabase
+    .from("citas")
+    .insert({
+      paciente_id: user.id,
+      profesional_id: cita.profesional_id,
+      servicio_id: cita.servicio_id,
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      estado: "pendiente",
+      creada_por: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !nuevaCita) {
+    const mensaje =
+      insertError?.code === "23P01"
+        ? "Ese horario ya no está disponible. Elegí otro."
+        : "No se pudo reagendar: " + (insertError?.message ?? "");
+    redirect(`${path}?error=${encodeURIComponent(mensaje)}`);
+  }
+
+  await supabase.from("citas").update({ estado: "cancelada", cancelada_por: user.id }).eq("id", citaId);
+
+  revalidatePath("/mis-horas");
+  redirect("/mis-horas?reagendada=1");
 }
