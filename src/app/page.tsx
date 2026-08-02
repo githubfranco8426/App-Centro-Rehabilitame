@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 
@@ -34,20 +33,18 @@ export default async function Home() {
 
         <div className="grid w-full gap-4 sm:grid-cols-3">
           {especialidades.map((especialidad) => (
-            <Card key={especialidad.id}>
-              <CardHeader>
-                <CardTitle>{especialidad.nombre}</CardTitle>
-                <CardDescription>
-                  {descripciones[especialidad.nombre] ?? ""}
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <Link key={especialidad.id} href={`/reservar?especialidad=${especialidad.id}`}>
+              <Card className="h-full transition-colors hover:border-primary">
+                <CardHeader>
+                  <CardTitle>{especialidad.nombre}</CardTitle>
+                  <CardDescription>
+                    {descripciones[especialidad.nombre] ?? ""}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
           ))}
         </div>
-
-        <Link href="/reservar">
-          <Button size="lg">Reservar hora</Button>
-        </Link>
       </main>
     </div>
   );
