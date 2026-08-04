@@ -1,7 +1,11 @@
 import Link from "next/link";
+import { Activity } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { formatCLP } from "@/lib/dinero";
+import { iconoEspecialidad, colorEspecialidad } from "@/lib/especialidades-ui";
+import { LiquidBackground } from "@/components/liquid-background";
+import { ReservaPasos } from "@/components/reservar/reserva-pasos";
 
 type ServicioRow = {
   id: string;
@@ -56,53 +60,93 @@ export default async function ReservarPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center px-6 py-16">
-      <div className="w-full max-w-2xl">
-        <h1 className="text-2xl font-semibold">
-          {especialidadNombre ? `Reservar hora — ${especialidadNombre}` : "Reservar hora"}
-        </h1>
-        <p className="mt-1 text-zinc-600 dark:text-zinc-400">Elegí el servicio que necesitás.</p>
-        {especialidadId && (
-          <Link href="/" className="mt-1 inline-block text-sm underline text-muted-foreground">
-            Ver otras especialidades
-          </Link>
-        )}
+    <div className="relative flex flex-1 flex-col items-center overflow-hidden bg-zinc-50 dark:bg-black">
+      <LiquidBackground />
+
+      <main className="relative flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 py-16">
+        <ReservaPasos
+          pasoActual={1}
+          titulo={especialidadNombre ? `Reservar hora — ${especialidadNombre}` : "Reservar hora"}
+        />
+
+        <div>
+          <p className="text-zinc-600 dark:text-zinc-400">
+            Cuéntanos qué necesitas y te ayudamos a agendar tu hora.
+          </p>
+          {especialidadId && (
+            <Link href="/" className="mt-1 inline-block text-sm underline text-muted-foreground">
+              Ver otras especialidades
+            </Link>
+          )}
+        </div>
 
         {servicios.length === 0 && (
-          <p className="mt-8 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {especialidadNombre
               ? `Todavía no hay servicios disponibles para ${especialidadNombre}.`
               : "Todavía no hay servicios disponibles para reservar."}
           </p>
         )}
 
-        {[...grupos.entries()].map(([especialidad, items]) => (
-          <div key={especialidad} className="mt-8">
-            {!especialidadId && (
-              <h2 className="mb-3 text-sm font-medium text-muted-foreground">{especialidad}</h2>
-            )}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {items.map((servicio) => (
-                <Link key={servicio.id} href={`/reservar/${servicio.id}`}>
-                  <Card className="transition-colors hover:border-primary">
-                    <CardHeader>
-                      <CardTitle className="text-base">{servicio.nombre}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{servicio.duracion_minutos} min</span>
-                      {servicio.precio != null && (
-                        <span className="font-medium text-foreground">
-                          {formatCLP(servicio.precio)}
-                        </span>
+        {[...grupos.entries()].map(([especialidad, items]) => {
+          const Icono = iconoEspecialidad[especialidad] ?? Activity;
+          const colores = colorEspecialidad[especialidad];
+
+          return (
+            <div key={especialidad} className="flex flex-col gap-3">
+              {!especialidadId && (
+                <h2 className={cn("flex items-center gap-2 text-sm font-medium", colores?.text)}>
+                  <Icono className="size-4" />
+                  {especialidad}
+                </h2>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {items.map((servicio, i) => (
+                  <Link
+                    key={servicio.id}
+                    href={`/reservar/${servicio.id}`}
+                    className="animate-in fade-in slide-in-from-bottom-4 group relative block h-full overflow-hidden rounded-2xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgb(0,0,0,0.12)] dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]"
+                    style={{ animationDelay: `${100 + i * 80}ms`, animationDuration: "600ms" }}
+                  >
+                    <div className="glass-panel absolute inset-0" />
+                    <div
+                      className={cn(
+                        "absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b to-transparent opacity-50",
+                        colores?.glow,
                       )}
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
+                    />
+                    <div className="glass-specular absolute inset-0" />
+
+                    <div className="relative flex h-full flex-col gap-4 p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="font-heading text-base font-medium">{servicio.nombre}</span>
+                        <div
+                          className={cn(
+                            "flex size-9 shrink-0 items-center justify-center rounded-xl backdrop-blur-sm",
+                            colores?.badge ?? "bg-primary/15 text-primary",
+                          )}
+                        >
+                          <Icono className="size-4" />
+                        </div>
+                      </div>
+
+                      <div className="mt-auto flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">
+                          {servicio.duracion_minutos} min
+                          {servicio.precio != null && ` · ${formatCLP(servicio.precio)}`}
+                        </span>
+                        <span className="rounded-full bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-transform group-hover:scale-105">
+                          Agendar
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          );
+        })}
+      </main>
     </div>
   );
 }

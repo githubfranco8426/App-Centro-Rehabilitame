@@ -6,11 +6,21 @@ import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { ZONA_HORARIA } from "@/lib/tiempo";
+import { LiquidBackground } from "@/components/liquid-background";
+import { ReservaPasos } from "@/components/reservar/reserva-pasos";
+import { ReservaResumen } from "@/components/reservar/reserva-resumen";
 
 const DIAS_A_MOSTRAR = 14;
 
 function capitalizar(texto: string) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
+
+function grupoHorario(slotInicio: string) {
+  const hora = Number(formatInTimeZone(new Date(slotInicio), ZONA_HORARIA, "H"));
+  if (hora < 12) return "Mañana";
+  if (hora < 19) return "Tarde";
+  return "Noche";
 }
 
 export default async function ElegirHorarioPage({
@@ -27,7 +37,7 @@ export default async function ElegirHorarioPage({
 
   const { data: servicio } = await supabase
     .from("servicios")
-    .select("id, nombre, duracion_minutos, especialidad_id")
+    .select("id, nombre, duracion_minutos, precio, especialidad_id")
     .eq("id", servicioId)
     .single();
 
@@ -58,71 +68,110 @@ export default async function ElegirHorarioPage({
     slots = data ?? [];
   }
 
+  const gruposHorario = new Map<string, typeof slots>();
+  for (const slot of slots) {
+    const grupo = grupoHorario(slot.slot_inicio);
+    gruposHorario.set(grupo, [...(gruposHorario.get(grupo) ?? []), slot]);
+  }
+  const ordenGrupos = ["Mañana", "Tarde", "Noche"] as const;
+
   return (
-    <div className="flex flex-1 flex-col items-center px-6 py-16">
-      <div className="w-full max-w-2xl">
-        <p className="text-sm text-muted-foreground">
-          <Link href="/reservar" className="hover:underline">
-            Reservar hora
-          </Link>{" "}
-          / {servicio.nombre}
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold">{servicio.nombre}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {servicio.duracion_minutos} min
-          {profesional ? ` con ${profesional.nombre}` : ""}
-        </p>
+    <div className="relative flex flex-1 flex-col items-center overflow-hidden bg-zinc-50 dark:bg-black">
+      <LiquidBackground />
 
-        {!profesional ? (
-          <p className="mt-8 text-sm text-muted-foreground">
-            No hay un profesional disponible para este servicio todavía.
-          </p>
-        ) : (
-          <>
-            <div className="mt-8 flex gap-2 overflow-x-auto pb-2">
-              {dias.map((dia) => {
-                const diaStr = format(dia, "yyyy-MM-dd");
-                const activo = diaStr === fechaSeleccionadaStr;
-                return (
-                  <Link
-                    key={diaStr}
-                    href={`/reservar/${servicioId}?fecha=${diaStr}`}
-                    className={cn(
-                      "flex shrink-0 flex-col items-center rounded-lg border px-3 py-2 text-center text-xs hover:border-primary",
-                      activo && "border-primary bg-primary text-primary-foreground",
-                    )}
-                  >
-                    <span className="capitalize">{format(dia, "EEE", { locale: es })}</span>
-                    <span className="text-sm font-medium">{format(dia, "d")}</span>
-                  </Link>
-                );
-              })}
-            </div>
+      <main className="relative grid w-full max-w-4xl flex-1 gap-6 px-6 py-16 lg:grid-cols-[1fr_18rem]">
+        <div className="flex flex-col gap-6">
+          <ReservaPasos
+            pasoActual={2}
+            servicioId={servicioId}
+            titulo="Selecciona fecha y hora de tu servicio"
+          />
 
-            <h2 className="mt-6 mb-3 text-sm font-medium">
-              {capitalizar(format(fechaSeleccionada, "EEEE, d 'de' MMMM", { locale: es }))}
-            </h2>
-
-            {slots.length === 0 ? (
+          <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 rounded-3xl border border-white/40 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] delay-100 duration-700 sm:p-6 dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
+            {!profesional ? (
               <p className="text-sm text-muted-foreground">
-                No hay horarios disponibles este día. Probá otra fecha.
+                No hay un profesional disponible para este servicio todavía.
               </p>
             ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {slots.map((slot) => (
-                  <Link
-                    key={slot.slot_inicio}
-                    href={`/reservar/${servicioId}/confirmar?profesional=${profesional.id}&fechaInicio=${encodeURIComponent(slot.slot_inicio)}&fechaFin=${encodeURIComponent(slot.slot_fin)}`}
-                    className="rounded-lg border px-3 py-2 text-center text-sm hover:border-primary hover:bg-primary hover:text-primary-foreground"
-                  >
-                    {formatInTimeZone(new Date(slot.slot_inicio), ZONA_HORARIA, "HH:mm")}
-                  </Link>
-                ))}
-              </div>
+              <>
+                <h2 className="font-heading text-sm font-medium text-muted-foreground">
+                  {capitalizar(format(fechaSeleccionada, "MMMM yyyy", { locale: es }))}
+                </h2>
+
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                  {dias.map((dia) => {
+                    const diaStr = format(dia, "yyyy-MM-dd");
+                    const activo = diaStr === fechaSeleccionadaStr;
+                    return (
+                      <Link
+                        key={diaStr}
+                        href={`/reservar/${servicioId}?fecha=${diaStr}`}
+                        className={cn(
+                          "flex shrink-0 flex-col items-center gap-0.5 rounded-2xl border border-transparent px-3 py-2 text-center text-xs transition-all",
+                          activo
+                            ? "bg-foreground text-background shadow-md"
+                            : "text-muted-foreground hover:border-primary/40 hover:bg-white/40 dark:hover:bg-white/5",
+                        )}
+                      >
+                        <span className="capitalize">{format(dia, "EEE", { locale: es })}</span>
+                        <span className="text-sm font-semibold">{format(dia, "d")}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 flex flex-col gap-6">
+                  {slots.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No hay horarios disponibles este día. Probá otra fecha.
+                    </p>
+                  ) : (
+                    ordenGrupos.map((grupo) => {
+                      const items = gruposHorario.get(grupo);
+                      if (!items || items.length === 0) return null;
+                      return (
+                        <div key={grupo} className="flex flex-col gap-3">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium">{grupo}</span>
+                            <span className="h-px flex-1 bg-border" />
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                            {items.map((slot) => (
+                              <Link
+                                key={slot.slot_inicio}
+                                href={`/reservar/${servicioId}/confirmar?profesional=${profesional.id}&fechaInicio=${encodeURIComponent(slot.slot_inicio)}&fechaFin=${encodeURIComponent(slot.slot_fin)}`}
+                                className="rounded-xl border border-white/50 bg-white/40 px-3 py-2 text-center text-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground dark:border-white/10 dark:bg-white/5"
+                              >
+                                {formatInTimeZone(new Date(slot.slot_inicio), ZONA_HORARIA, "HH:mm")}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+
+                  {slots.length > 0 && (
+                    <p className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+                      ⚠️ Las horas disponibles podrían agotarse, ¡agenda lo antes posible!
+                    </p>
+                  )}
+                </div>
+              </>
             )}
-          </>
-        )}
-      </div>
+          </div>
+        </div>
+
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <ReservaResumen
+            servicioNombre={servicio.nombre}
+            duracionMinutos={servicio.duracion_minutos}
+            precio={servicio.precio}
+            profesionalNombre={profesional?.nombre}
+            fechaTexto={capitalizar(format(fechaSeleccionada, "EEEE d 'de' MMMM", { locale: es }))}
+          />
+        </div>
+      </main>
     </div>
   );
 }
