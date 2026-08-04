@@ -13,6 +13,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Link href="/admin/servicios" className="hover:underline">
           Servicios
         </Link>
+        <Link href="/admin/bloqueos" className="hover:underline">
+          Bloqueos
+        </Link>
       </nav>
       <div className="flex flex-1">{children}</div>
     </div>
