@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loginSchema, registroSchema } from "@/lib/validaciones/auth";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 import { LEAD_TIME_MINUTOS_PACIENTE, puedeGestionarCita } from "@/lib/citas/reglas";
+import { notificarCambioCita } from "@/lib/email/notificar";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 function unico<T>(valor: T | T[] | null): T | null {
@@ -26,24 +27,28 @@ async function crearCita(
   supabase: SupabaseClient,
   pacienteId: string,
   reserva: z.infer<typeof reservaSchema>,
-) {
-  const { error } = await supabase.from("citas").insert({
-    paciente_id: pacienteId,
-    profesional_id: reserva.profesionalId,
-    servicio_id: reserva.servicioId,
-    fecha_inicio: reserva.fechaInicio,
-    fecha_fin: reserva.fechaFin,
-    estado: "pendiente",
-    creada_por: pacienteId,
-  });
+): Promise<{ error: string } | { citaId: string }> {
+  const { data, error } = await supabase
+    .from("citas")
+    .insert({
+      paciente_id: pacienteId,
+      profesional_id: reserva.profesionalId,
+      servicio_id: reserva.servicioId,
+      fecha_inicio: reserva.fechaInicio,
+      fecha_fin: reserva.fechaFin,
+      estado: "pendiente",
+      creada_por: pacienteId,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    if (error.code === "23P01") {
-      return "Ese horario ya no está disponible. Elegí otro.";
+  if (error || !data) {
+    if (error?.code === "23P01") {
+      return { error: "Ese horario ya no está disponible. Elegí otro." };
     }
-    return "No se pudo crear la reserva: " + error.message;
+    return { error: "No se pudo crear la reserva: " + (error?.message ?? "") };
   }
-  return null;
+  return { citaId: data.id };
 }
 
 function parseReserva(formData: FormData) {
@@ -82,11 +87,12 @@ export async function registrarYReservar(formData: FormData) {
     return { error: "No se pudo crear la cuenta: " + (error?.message ?? "") };
   }
 
-  const citaError = await crearCita(supabase, data.user.id, reserva.data);
-  if (citaError) {
-    return { error: citaError };
+  const resultado = await crearCita(supabase, data.user.id, reserva.data);
+  if ("error" in resultado) {
+    return { error: resultado.error };
   }
 
+  await notificarCambioCita(supabase, resultado.citaId, "confirmacion");
   redirect("/mis-horas");
 }
 
@@ -120,6 +126,10 @@ export async function cambiarEstadoCita(citaId: string, formData: FormData): Pro
     redirect(`${path}?error=${encodeURIComponent("No se pudo actualizar: " + error.message)}`);
   }
 
+  if (parsed.data.estado === "cancelada") {
+    await notificarCambioCita(supabase, citaId, "cancelacion");
+  }
+
   revalidatePath(path);
   revalidatePath("/admin");
   redirect(path);
@@ -143,7 +153,7 @@ export async function reagendarCitaAdmin(citaId: string, formData: FormData): Pr
 
   const { data: citaOriginal, error: fetchError } = await supabase
     .from("citas")
-    .select("paciente_id, profesional_id, servicio_id, servicios(duracion_minutos)")
+    .select("paciente_id, profesional_id, servicio_id, fecha_inicio, servicios(duracion_minutos)")
     .eq("id", citaId)
     .single();
 
@@ -186,6 +196,10 @@ export async function reagendarCitaAdmin(citaId: string, formData: FormData): Pr
     .update({ estado: "cancelada", cancelada_por: user?.id })
     .eq("id", citaId);
 
+  await notificarCambioCita(supabase, nuevaCita.id, "reagendamiento", {
+    fechaAnteriorIso: citaOriginal.fecha_inicio,
+  });
+
   revalidatePath("/admin");
   redirect(`/admin/citas/${nuevaCita.id}?reagendada=1`);
 }
@@ -211,11 +225,12 @@ export async function iniciarSesionYReservar(formData: FormData) {
     return { error: "Email o contraseña incorrectos." };
   }
 
-  const citaError = await crearCita(supabase, data.user.id, reserva.data);
-  if (citaError) {
-    return { error: citaError };
+  const resultado = await crearCita(supabase, data.user.id, reserva.data);
+  if ("error" in resultado) {
+    return { error: resultado.error };
   }
 
+  await notificarCambioCita(supabase, resultado.citaId, "confirmacion");
   redirect("/mis-horas");
 }
 
@@ -246,6 +261,7 @@ export async function cancelarCitaPaciente(citaId: string): Promise<void> {
   }
 
   await supabase.from("citas").update({ estado: "cancelada", cancelada_por: user.id }).eq("id", citaId);
+  await notificarCambioCita(supabase, citaId, "cancelacion");
 
   revalidatePath("/mis-horas");
   redirect("/mis-horas?cancelada=1");
@@ -307,6 +323,9 @@ export async function reagendarCitaPaciente(
   }
 
   await supabase.from("citas").update({ estado: "cancelada", cancelada_por: user.id }).eq("id", citaId);
+  await notificarCambioCita(supabase, nuevaCita.id, "reagendamiento", {
+    fechaAnteriorIso: cita.fecha_inicio,
+  });
 
   revalidatePath("/mis-horas");
   redirect("/mis-horas?reagendada=1");
