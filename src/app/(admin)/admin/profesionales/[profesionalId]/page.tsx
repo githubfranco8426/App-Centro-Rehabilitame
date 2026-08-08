@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import {
   actualizarProfesional,
   agregarBloqueo,
   agregarDisponibilidad,
+  desconectarGoogleCalendar,
   eliminarBloqueo,
   eliminarDisponibilidad,
 } from "@/lib/profesionales/actions";
@@ -35,10 +36,10 @@ export default async function EditarProfesionalPage({
   searchParams,
 }: {
   params: Promise<{ profesionalId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; google?: string }>;
 }) {
   const { profesionalId } = await params;
-  const { error: errorParam } = await searchParams;
+  const { error: errorParam, google: googleParam } = await searchParams;
   const supabase = await createClient();
 
   const { data: profesional } = await supabase
@@ -67,15 +68,25 @@ export default async function EditarProfesionalPage({
     .eq("profesional_id", profesionalId)
     .order("fecha_inicio");
 
+  const { data: googleToken } = await supabase
+    .from("profesional_google_tokens")
+    .select("email")
+    .eq("profesional_id", profesionalId)
+    .maybeSingle();
+
   const actualizar = actualizarProfesional.bind(null, profesionalId);
   const agregarDisp = agregarDisponibilidad.bind(null, profesionalId);
   const agregarBloq = agregarBloqueo.bind(null, profesionalId);
+  const desconectarGoogle = desconectarGoogleCalendar.bind(null, profesionalId);
 
   return (
     <div className="w-full max-w-2xl px-6 py-8">
       <h1 className="text-2xl font-semibold">{profesional.nombre}</h1>
 
       {errorParam && <p className="mt-4 text-sm text-red-600">{errorParam}</p>}
+      {googleParam === "conectado" && (
+        <p className="mt-4 text-sm text-emerald-600">Google Calendar conectado correctamente.</p>
+      )}
 
       <Card className="mt-6">
         <CardHeader>
@@ -202,6 +213,41 @@ export default async function EditarProfesionalPage({
             </div>
             <Button type="submit">Agregar</Button>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Google Calendar</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {googleToken ? (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                Conectado como <span className="font-medium text-foreground">{googleToken.email}</span>. Las
+                citas se sincronizan automáticamente y los horarios ocupados en este calendario se bloquean
+                para reservar.
+              </p>
+              <form action={desconectarGoogle}>
+                <Button type="submit" variant="ghost" size="sm">
+                  Desconectar
+                </Button>
+              </form>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                Conectá el Google Calendar personal del profesional para sincronizar citas y bloquear
+                horarios ya ocupados.
+              </p>
+              <a
+                href={`/api/google/connect?profesionalId=${profesionalId}`}
+                className={buttonVariants({ size: "sm" })}
+              >
+                Conectar Google Calendar
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

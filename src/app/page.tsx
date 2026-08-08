@@ -25,7 +25,7 @@ export default async function Home() {
 
   return (
     <div className="relative flex flex-1 flex-col items-center overflow-hidden bg-zinc-50 dark:bg-black">
-      <LiquidBackground />
+      <LiquidBackground photo />
 
       <main className="relative flex w-full max-w-3xl flex-1 flex-col items-center justify-center gap-12 px-6 py-24 sm:items-start">
         <div

@@ -172,3 +172,11 @@ export async function eliminarBloqueo(profesionalId: string, bloqueoId: string):
   revalidatePath(path);
   redirect(path);
 }
+
+export async function desconectarGoogleCalendar(profesionalId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("profesional_google_tokens").delete().eq("profesional_id", profesionalId);
+  const path = `/admin/profesionales/${profesionalId}`;
+  revalidatePath(path);
+  redirect(path);
+}

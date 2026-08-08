@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { login } from "@/lib/auth/actions";
 import { loginSchema, type LoginInput } from "@/lib/validaciones/auth";
+import { LiquidBackground } from "@/components/liquid-background";
 
 export default function LoginPage() {
   const [pending, startTransition] = useTransition();
@@ -33,8 +34,9 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center px-6 py-24">
-      <Card className="w-full max-w-sm">
+    <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-zinc-50 px-6 py-24 dark:bg-black">
+      <LiquidBackground photo />
+      <Card className="glass-panel relative w-full max-w-sm rounded-3xl border border-white/40 bg-transparent shadow-[0_8px_30px_rgb(0,0,0,0.06)] dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
         <CardHeader>
           <CardTitle>Iniciar sesión</CardTitle>
           <CardDescription>Accedé para ver y gestionar tus horas.</CardDescription>

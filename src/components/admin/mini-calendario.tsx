@@ -45,48 +45,52 @@ export function MiniCalendario({
   const mesSiguiente = format(addMonths(mesActual, 1), "yyyy-MM");
 
   return (
-    <div className="rounded-lg border p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <Link
-          href={buildHref(basePath, searchParams, { mes: mesAnterior })}
-          className="rounded p-1 text-sm hover:bg-muted"
-        >
-          ‹
-        </Link>
-        <span className="text-sm font-medium capitalize">
-          {format(mesActual, "MMMM yyyy", { locale: es })}
-        </span>
-        <Link
-          href={buildHref(basePath, searchParams, { mes: mesSiguiente })}
-          className="rounded p-1 text-sm hover:bg-muted"
-        >
-          ›
-        </Link>
-      </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
-        {DIAS.map((d) => (
-          <span key={d}>{d}</span>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1">
-        {dias.map((dia) => {
-          const fechaStr = format(dia, "yyyy-MM-dd");
-          const esSeleccionado = isSameDay(dia, fechaSeleccionada);
-          const esDelMes = isSameMonth(dia, mesActual);
-          return (
-            <Link
-              key={fechaStr}
-              href={buildHref(basePath, searchParams, { fecha: fechaStr, mes: format(mesActual, "yyyy-MM") })}
-              className={cn(
-                "flex h-7 items-center justify-center rounded-full text-xs hover:bg-muted",
-                !esDelMes && "text-muted-foreground/50",
-                esSeleccionado && "bg-primary text-primary-foreground hover:bg-primary",
-              )}
-            >
-              {format(dia, "d")}
-            </Link>
-          );
-        })}
+    <div className="glass-panel relative overflow-hidden rounded-2xl border border-white/40 p-4 dark:border-white/10">
+      <div className="glass-specular pointer-events-none absolute inset-0" />
+      <div className="relative">
+        <div className="mb-3 flex items-center justify-between">
+          <Link
+            href={buildHref(basePath, searchParams, { mes: mesAnterior })}
+            className="flex size-7 items-center justify-center rounded-full text-sm text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+          >
+            ‹
+          </Link>
+          <span className="text-sm font-medium capitalize">
+            {format(mesActual, "MMMM yyyy", { locale: es })}
+          </span>
+          <Link
+            href={buildHref(basePath, searchParams, { mes: mesSiguiente })}
+            className="flex size-7 items-center justify-center rounded-full text-sm text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+          >
+            ›
+          </Link>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-muted-foreground">
+          {DIAS.map((d) => (
+            <span key={d}>{d}</span>
+          ))}
+        </div>
+        <div className="mt-1 grid grid-cols-7 gap-1">
+          {dias.map((dia) => {
+            const fechaStr = format(dia, "yyyy-MM-dd");
+            const esSeleccionado = isSameDay(dia, fechaSeleccionada);
+            const esDelMes = isSameMonth(dia, mesActual);
+            return (
+              <Link
+                key={fechaStr}
+                href={buildHref(basePath, searchParams, { fecha: fechaStr, mes: format(mesActual, "yyyy-MM") })}
+                className={cn(
+                  "flex h-8 items-center justify-center rounded-full text-xs transition-all hover:bg-foreground/10",
+                  !esDelMes && "text-muted-foreground/40",
+                  esSeleccionado &&
+                    "bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground",
+                )}
+              >
+                {format(dia, "d")}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

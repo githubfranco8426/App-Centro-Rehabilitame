@@ -6,9 +6,12 @@ import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { ZONA_HORARIA } from "@/lib/tiempo";
+import { obtenerSlotsDisponibles } from "@/lib/citas/disponibilidad";
+import { unico } from "@/lib/utils";
 import { LiquidBackground } from "@/components/liquid-background";
 import { ReservaPasos } from "@/components/reservar/reserva-pasos";
 import { ReservaResumen } from "@/components/reservar/reserva-resumen";
+import { ProfesionalBanner } from "@/components/reservar/profesional-banner";
 
 const DIAS_A_MOSTRAR = 14;
 
@@ -37,11 +40,13 @@ export default async function ElegirHorarioPage({
 
   const { data: servicio } = await supabase
     .from("servicios")
-    .select("id, nombre, duracion_minutos, precio, especialidad_id")
+    .select("id, nombre, duracion_minutos, precio, especialidad_id, especialidades(nombre)")
     .eq("id", servicioId)
     .single();
 
   if (!servicio) notFound();
+
+  const especialidadNombre = unico(servicio.especialidades)?.nombre;
 
   const { data: profesional } = await supabase
     .from("profesionales")
@@ -60,12 +65,12 @@ export default async function ElegirHorarioPage({
 
   let slots: { slot_inicio: string; slot_fin: string }[] = [];
   if (profesional) {
-    const { data } = await supabase.rpc("get_available_slots", {
-      p_profesional_id: profesional.id,
-      p_servicio_id: servicioId,
-      p_fecha: fechaSeleccionadaStr,
+    slots = await obtenerSlotsDisponibles(supabase, {
+      profesionalId: profesional.id,
+      servicioId,
+      fecha: fechaSeleccionada,
+      fechaStr: fechaSeleccionadaStr,
     });
-    slots = data ?? [];
   }
 
   const gruposHorario = new Map<string, typeof slots>();
@@ -77,7 +82,7 @@ export default async function ElegirHorarioPage({
 
   return (
     <div className="relative flex flex-1 flex-col items-center overflow-hidden bg-zinc-50 dark:bg-black">
-      <LiquidBackground />
+      <LiquidBackground photo />
 
       <main className="relative grid w-full max-w-4xl flex-1 gap-6 px-6 py-16 lg:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">
@@ -86,6 +91,8 @@ export default async function ElegirHorarioPage({
             servicioId={servicioId}
             titulo="Selecciona fecha y hora de tu servicio"
           />
+
+          {profesional && <ProfesionalBanner nombre={profesional.nombre} especialidad={especialidadNombre} />}
 
           <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 rounded-3xl border border-white/40 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] delay-100 duration-700 sm:p-6 dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
             {!profesional ? (

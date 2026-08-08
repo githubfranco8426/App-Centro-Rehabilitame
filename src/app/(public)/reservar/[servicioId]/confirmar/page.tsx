@@ -48,7 +48,7 @@ export default async function ConfirmarReservaPage({
 
   return (
     <div className="relative flex flex-1 flex-col items-center overflow-hidden bg-zinc-50 dark:bg-black">
-      <LiquidBackground />
+      <LiquidBackground photo />
 
       <main className="relative grid w-full max-w-4xl flex-1 gap-6 px-6 py-16 lg:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">

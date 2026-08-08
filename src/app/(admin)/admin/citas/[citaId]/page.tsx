@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LabeledSelect } from "@/components/admin/labeled-select";
 import { cambiarEstadoCita, reagendarCitaAdmin } from "@/lib/citas/actions";
+import { ESTADOS_CITA } from "@/lib/citas/reglas";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 
 function unico<T>(valor: T | T[] | null): T | null {
@@ -19,14 +20,6 @@ function unico<T>(valor: T | T[] | null): T | null {
 function capitalizar(texto: string) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
-
-const ESTADOS = [
-  { id: "pendiente", nombre: "Pendiente" },
-  { id: "confirmada", nombre: "Confirmada" },
-  { id: "completada", nombre: "Completada" },
-  { id: "no_asistio", nombre: "No asistió" },
-  { id: "cancelada", nombre: "Cancelada" },
-];
 
 export default async function DetalleCitaPage({
   params,
@@ -81,7 +74,7 @@ export default async function DetalleCitaPage({
           </p>
           {paciente?.telefono && <p>Teléfono: {paciente.telefono}</p>}
           <Badge className="w-fit" variant={cita.estado === "cancelada" ? "destructive" : "default"}>
-            {ESTADOS.find((e) => e.id === cita.estado)?.nombre ?? cita.estado}
+            {ESTADOS_CITA.find((e) => e.id === cita.estado)?.nombre ?? cita.estado}
           </Badge>
         </CardContent>
       </Card>
@@ -92,7 +85,7 @@ export default async function DetalleCitaPage({
         </CardHeader>
         <CardContent>
           <form action={cambiarEstado} className="flex items-end gap-2">
-            <LabeledSelect name="estado" items={ESTADOS} defaultValue={cita.estado} className="w-48" />
+            <LabeledSelect name="estado" items={ESTADOS_CITA} defaultValue={cita.estado} className="w-48" />
             <Button type="submit">Guardar</Button>
           </form>
         </CardContent>

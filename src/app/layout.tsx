@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Manrope } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
+import { ConditionalHeader } from "@/components/conditional-header";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,7 +36,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
+        <ConditionalHeader>
+          <SiteHeader />
+        </ConditionalHeader>
         {children}
       </body>
     </html>

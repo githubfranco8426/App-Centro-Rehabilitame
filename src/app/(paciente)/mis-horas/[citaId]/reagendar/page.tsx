@@ -4,20 +4,16 @@ import { addDays, format } from "date-fns";
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
+import { cn, unico } from "@/lib/utils";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 import { puedeGestionarCita } from "@/lib/citas/reglas";
 import { reagendarCitaPaciente } from "@/lib/citas/actions";
+import { obtenerSlotsDisponibles } from "@/lib/citas/disponibilidad";
 
 const DIAS_A_MOSTRAR = 14;
 
 function capitalizar(texto: string) {
   return texto.charAt(0).toUpperCase() + texto.slice(1);
-}
-
-function unico<T>(valor: T | T[] | null): T | null {
-  if (!valor) return null;
-  return Array.isArray(valor) ? (valor[0] ?? null) : valor;
 }
 
 export default async function ReagendarCitaPage({
@@ -57,12 +53,12 @@ export default async function ReagendarCitaPage({
 
   let slots: { slot_inicio: string; slot_fin: string }[] = [];
   if (gestionable) {
-    const { data } = await supabase.rpc("get_available_slots", {
-      p_profesional_id: cita.profesional_id,
-      p_servicio_id: cita.servicio_id,
-      p_fecha: fechaSeleccionadaStr,
+    slots = await obtenerSlotsDisponibles(supabase, {
+      profesionalId: cita.profesional_id,
+      servicioId: cita.servicio_id,
+      fecha: fechaSeleccionada,
+      fechaStr: fechaSeleccionadaStr,
     });
-    slots = data ?? [];
   }
 
   return (

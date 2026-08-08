@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { ZONA_HORARIA } from "@/lib/tiempo";
+import { unico } from "@/lib/utils";
 import { resend, EMAIL_FROM } from "./resend";
 import { ConfirmacionEmail } from "./plantillas/confirmacion";
 import { CancelacionEmail } from "./plantillas/cancelacion";
@@ -14,11 +15,6 @@ const ASUNTOS: Record<TipoNotificacion, string> = {
   cancelacion: "Tu hora fue cancelada — Rehabilita.me",
   reagendamiento: "Tu hora fue reagendada — Rehabilita.me",
 };
-
-function unico<T>(valor: T | T[] | null): T | null {
-  if (!valor) return null;
-  return Array.isArray(valor) ? (valor[0] ?? null) : valor;
-}
 
 function formatearFecha(iso: string) {
   return formatInTimeZone(new Date(iso), ZONA_HORARIA, "EEEE d 'de' MMMM, HH:mm 'hs'", { locale: es });

@@ -17,7 +17,7 @@ export async function proxy(request: NextRequest) {
     return redirectTo(request, response, "/login");
   }
 
-  if (pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api/google")) {
     if (!user) {
       return redirectTo(request, response, "/login");
     }

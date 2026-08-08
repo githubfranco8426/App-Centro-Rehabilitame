@@ -9,12 +9,9 @@ import { loginSchema, registroSchema } from "@/lib/validaciones/auth";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 import { LEAD_TIME_MINUTOS_PACIENTE, puedeGestionarCita } from "@/lib/citas/reglas";
 import { notificarCambioCita } from "@/lib/email/notificar";
+import { sincronizarCancelacion, sincronizarCreacion } from "@/lib/google/sincronizar";
+import { unico } from "@/lib/utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
-
-function unico<T>(valor: T | T[] | null): T | null {
-  if (!valor) return null;
-  return Array.isArray(valor) ? (valor[0] ?? null) : valor;
-}
 
 const reservaSchema = z.object({
   servicioId: z.uuid(),
@@ -93,6 +90,7 @@ export async function registrarYReservar(formData: FormData) {
   }
 
   await notificarCambioCita(supabase, resultado.citaId, "confirmacion");
+  await sincronizarCreacion(supabase, resultado.citaId);
   redirect("/mis-horas");
 }
 
@@ -128,6 +126,7 @@ export async function cambiarEstadoCita(citaId: string, formData: FormData): Pro
 
   if (parsed.data.estado === "cancelada") {
     await notificarCambioCita(supabase, citaId, "cancelacion");
+    await sincronizarCancelacion(supabase, citaId);
   }
 
   revalidatePath(path);
@@ -199,6 +198,8 @@ export async function reagendarCitaAdmin(citaId: string, formData: FormData): Pr
   await notificarCambioCita(supabase, nuevaCita.id, "reagendamiento", {
     fechaAnteriorIso: citaOriginal.fecha_inicio,
   });
+  await sincronizarCreacion(supabase, nuevaCita.id);
+  await sincronizarCancelacion(supabase, citaId);
 
   revalidatePath("/admin");
   redirect(`/admin/citas/${nuevaCita.id}?reagendada=1`);
@@ -231,6 +232,7 @@ export async function iniciarSesionYReservar(formData: FormData) {
   }
 
   await notificarCambioCita(supabase, resultado.citaId, "confirmacion");
+  await sincronizarCreacion(supabase, resultado.citaId);
   redirect("/mis-horas");
 }
 
@@ -262,6 +264,7 @@ export async function cancelarCitaPaciente(citaId: string): Promise<void> {
 
   await supabase.from("citas").update({ estado: "cancelada", cancelada_por: user.id }).eq("id", citaId);
   await notificarCambioCita(supabase, citaId, "cancelacion");
+  await sincronizarCancelacion(supabase, citaId);
 
   revalidatePath("/mis-horas");
   redirect("/mis-horas?cancelada=1");
@@ -326,6 +329,8 @@ export async function reagendarCitaPaciente(
   await notificarCambioCita(supabase, nuevaCita.id, "reagendamiento", {
     fechaAnteriorIso: cita.fecha_inicio,
   });
+  await sincronizarCreacion(supabase, nuevaCita.id);
+  await sincronizarCancelacion(supabase, citaId);
 
   revalidatePath("/mis-horas");
   redirect("/mis-horas?reagendada=1");

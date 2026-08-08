@@ -79,15 +79,18 @@ export default async function AdminAgendaPage({
 
   const citas = citasData ?? [];
 
+  const tablaHref = `/admin/tabla?${new URLSearchParams({ fecha: fechaStr, ...(params.profesional ? { profesional: params.profesional } : {}) }).toString()}`;
+
   return (
     <div className="flex flex-1">
-      <aside className="hidden w-64 shrink-0 border-r p-4 md:block">
-        <div className="mb-4 rounded-lg border bg-gradient-to-br from-primary/10 to-accent/10 p-4 text-sm">
-          <p className="font-medium">¡Compartí tu link y recibí citas!</p>
+      <aside className="hidden w-72 shrink-0 flex-col gap-4 p-4 md:flex">
+        <div className="glass-panel relative overflow-hidden rounded-2xl border border-white/40 p-4 dark:border-white/10">
+          <div className="glass-specular pointer-events-none absolute inset-0" />
+          <p className="relative text-sm font-medium">¡Compartí tu link y recibí citas!</p>
         </div>
 
-        <div className="mb-4">
-          <p className="mb-2 text-sm font-medium">Profesional</p>
+        <div>
+          <p className="mb-2 text-sm font-medium text-muted-foreground">Profesional</p>
           <ProfesionalFilter profesionales={todosProfesionales ?? []} />
         </div>
 
@@ -99,31 +102,46 @@ export default async function AdminAgendaPage({
         />
       </aside>
 
-      <main className="flex-1 overflow-x-auto">
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <div className="flex items-center gap-3">
+      <main className="flex-1 overflow-x-auto p-4 md:p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
             <Link href="/admin">
-              <Button variant="outline" size="sm">
+              <Button size="sm" className="rounded-full">
                 Hoy
               </Button>
             </Link>
-            <Link
-              href={`/admin?${new URLSearchParams({ ...params, fecha: format(subDays(fecha, 1), "yyyy-MM-dd") }).toString()}`}
-              className="rounded p-1 hover:bg-muted"
-            >
-              ‹
-            </Link>
-            <Link
-              href={`/admin?${new URLSearchParams({ ...params, fecha: format(addDays(fecha, 1), "yyyy-MM-dd") }).toString()}`}
-              className="rounded p-1 hover:bg-muted"
-            >
-              ›
-            </Link>
+            <div className="flex overflow-hidden rounded-full border border-border">
+              <Link
+                href={`/admin?${new URLSearchParams({ ...params, fecha: format(subDays(fecha, 1), "yyyy-MM-dd") }).toString()}`}
+                className="flex size-8 items-center justify-center text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+              >
+                ‹
+              </Link>
+              <Link
+                href={`/admin?${new URLSearchParams({ ...params, fecha: format(addDays(fecha, 1), "yyyy-MM-dd") }).toString()}`}
+                className="flex size-8 items-center justify-center border-l border-border text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+              >
+                ›
+              </Link>
+            </div>
             <h1 className="text-lg font-semibold">
               {capitalizar(format(fecha, "EEEE, d 'de' MMMM yyyy", { locale: es }))}
             </h1>
           </div>
-          <Button disabled>Nuevo</Button>
+          <div className="flex items-center gap-2">
+            <div className="flex overflow-hidden rounded-full border border-border p-0.5 text-xs font-medium">
+              <span className="rounded-full bg-primary px-3 py-1.5 text-primary-foreground">Agenda</span>
+              <Link
+                href={tablaHref}
+                className="rounded-full px-3 py-1.5 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+              >
+                Tabla
+              </Link>
+            </div>
+            <Button disabled size="sm" className="rounded-full">
+              Nuevo
+            </Button>
+          </div>
         </div>
 
         {profesionales.length === 0 ? (
@@ -131,65 +149,68 @@ export default async function AdminAgendaPage({
             No hay profesionales cargados todavía.
           </div>
         ) : (
-          <div className="min-w-max">
-            <div
-              className="grid border-b"
-              style={{ gridTemplateColumns: `4rem repeat(${profesionales.length}, minmax(200px, 1fr))` }}
-            >
-              <div />
-              {profesionales.map((p, i) => {
-                const especialidad = Array.isArray(p.especialidades)
-                  ? p.especialidades[0]?.nombre
-                  : (p.especialidades as { nombre: string } | null)?.nombre;
-                return (
-                  <div key={p.id} className="flex items-center gap-2 border-l px-4 py-3">
-                    <span
-                      className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${COLORES_AVATAR[i % COLORES_AVATAR.length]}`}
-                    >
-                      {iniciales(p.nombre)}
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium leading-tight">{p.nombre}</p>
-                      {especialidad && (
-                        <p className="text-xs leading-tight text-muted-foreground">{especialidad}</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {HORAS.map((hora) => (
+          <div className="glass-panel relative min-w-max overflow-hidden rounded-2xl border border-white/40 shadow-xl dark:border-white/10">
+            <div className="glass-specular pointer-events-none absolute inset-0" />
+            <div className="relative">
               <div
-                key={hora}
-                className="grid border-b"
+                className="grid border-b border-border/60"
                 style={{ gridTemplateColumns: `4rem repeat(${profesionales.length}, minmax(200px, 1fr))` }}
               >
-                <div className="px-2 py-3 text-right text-xs text-muted-foreground">{hora}</div>
+                <div />
                 {profesionales.map((p, i) => {
-                  const cita = citas.find(
-                    (c) =>
-                      c.profesional_id === p.id &&
-                      formatInTimeZone(new Date(c.fecha_inicio), ZONA_HORARIA, "HH:mm") === hora,
-                  );
-                  const servicio = cita ? unico(cita.servicios) : null;
-                  const paciente = cita ? unico(cita.profiles) : null;
+                  const especialidad = Array.isArray(p.especialidades)
+                    ? p.especialidades[0]?.nombre
+                    : (p.especialidades as { nombre: string } | null)?.nombre;
                   return (
-                    <div key={p.id} className="h-14 border-l p-0.5">
-                      {cita && (
-                        <Link
-                          href={`/admin/citas/${cita.id}`}
-                          className={`block h-full rounded border-l-2 px-2 py-1 text-xs hover:opacity-80 ${COLORES_CITA[i % COLORES_CITA.length]}`}
-                        >
-                          <p className="font-medium leading-tight">{paciente?.nombre}</p>
-                          <p className="leading-tight text-muted-foreground">{servicio?.nombre}</p>
-                        </Link>
-                      )}
+                    <div key={p.id} className="flex items-center gap-2 border-l border-border/60 px-4 py-3">
+                      <span
+                        className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-medium ${COLORES_AVATAR[i % COLORES_AVATAR.length]}`}
+                      >
+                        {iniciales(p.nombre)}
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium leading-tight">{p.nombre}</p>
+                        {especialidad && (
+                          <p className="text-xs leading-tight text-muted-foreground">{especialidad}</p>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-            ))}
+
+              {HORAS.map((hora) => (
+                <div
+                  key={hora}
+                  className="grid border-b border-border/60"
+                  style={{ gridTemplateColumns: `4rem repeat(${profesionales.length}, minmax(200px, 1fr))` }}
+                >
+                  <div className="px-2 py-3 text-right text-xs text-muted-foreground">{hora}</div>
+                  {profesionales.map((p, i) => {
+                    const cita = citas.find(
+                      (c) =>
+                        c.profesional_id === p.id &&
+                        formatInTimeZone(new Date(c.fecha_inicio), ZONA_HORARIA, "HH:mm") === hora,
+                    );
+                    const servicio = cita ? unico(cita.servicios) : null;
+                    const paciente = cita ? unico(cita.profiles) : null;
+                    return (
+                      <div key={p.id} className="h-14 border-l border-border/60 p-1">
+                        {cita && (
+                          <Link
+                            href={`/admin/citas/${cita.id}`}
+                            className={`block h-full rounded-lg border-l-2 px-2 py-1 text-xs shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md ${COLORES_CITA[i % COLORES_CITA.length]}`}
+                          >
+                            <p className="font-medium leading-tight">{paciente?.nombre}</p>
+                            <p className="leading-tight text-muted-foreground">{servicio?.nombre}</p>
+                          </Link>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>
