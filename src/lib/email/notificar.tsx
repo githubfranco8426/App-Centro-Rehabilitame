@@ -3,7 +3,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 import { unico } from "@/lib/utils";
-import { getResendClient, EMAIL_FROM } from "./resend";
+import { getResendClient, EMAIL_FROM, ADMIN_NOTIFICATION_EMAIL } from "./resend";
 import { ConfirmacionEmail } from "./plantillas/confirmacion";
 import { CancelacionEmail } from "./plantillas/cancelacion";
 import { ReagendamientoEmail } from "./plantillas/reagendamiento";
@@ -77,6 +77,19 @@ export async function notificarCambioCita(
 
     if (error) throw new Error(error.message);
     exito = true;
+
+    if (tipo === "confirmacion") {
+      // Best-effort: si el aviso al centro falla, no debe afectar el email
+      // que sí le llegó al paciente ni el éxito registrado arriba.
+      await getResendClient()
+        .emails.send({
+          from: EMAIL_FROM,
+          to: ADMIN_NOTIFICATION_EMAIL,
+          subject: `Nueva reserva — ${props.servicioNombre || "Sin servicio"}`,
+          text: `Nueva reserva confirmada.\n\nPaciente: ${props.pacienteNombre}\nServicio: ${props.servicioNombre}\nProfesional: ${props.profesionalNombre}\nFecha: ${props.fechaFormateada}`,
+        })
+        .catch((err) => console.error("No se pudo avisar al centro de la nueva reserva:", err));
+    }
   } catch (err) {
     errorMensaje = err instanceof Error ? err.message : "Error desconocido";
   }

@@ -12,6 +12,10 @@ export function getResendClient() {
   return client;
 }
 
-// Dominio de prueba de Resend — cambiar por un dominio propio verificado
-// (Domains → Add Domain) antes de lanzar a producción.
-export const EMAIL_FROM = "Centro Rehabilita.me <onboarding@resend.dev>";
+// Dominio verificado en Resend (rehabilitame.cl) — verificado el 10/08/2026.
+export const EMAIL_FROM = "Centro Rehabilita.me <reservas@rehabilitame.cl>";
+
+// Correo del centro que recibe aviso cada vez que entra una reserva nueva.
+// Actualiza este valor (o muévelo a una env var ADMIN_NOTIFICATION_EMAIL)
+// si cambia quién debe recibir las notificaciones.
+export const ADMIN_NOTIFICATION_EMAIL = "klgo.ftabilo@gmail.com";
