@@ -3,7 +3,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { es } from "date-fns/locale";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 import { unico } from "@/lib/utils";
-import { resend, EMAIL_FROM } from "./resend";
+import { getResendClient, EMAIL_FROM } from "./resend";
 import { ConfirmacionEmail } from "./plantillas/confirmacion";
 import { CancelacionEmail } from "./plantillas/cancelacion";
 import { ReagendamientoEmail } from "./plantillas/reagendamiento";
@@ -68,7 +68,7 @@ export async function notificarCambioCita(
         <ReagendamientoEmail {...props} />
       );
 
-    const { error } = await resend.emails.send({
+    const { error } = await getResendClient().emails.send({
       from: EMAIL_FROM,
       to: paciente.email,
       subject: ASUNTOS[tipo],
