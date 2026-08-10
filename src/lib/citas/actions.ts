@@ -114,10 +114,18 @@ export async function reservarConContacto(formData: FormData) {
   const headersList = await headers();
   const origin = headersList.get("origin") ?? `https://${headersList.get("host")}`;
   const supabase = await createClient();
-  await supabase.auth.signInWithOtp({
+  const { error: otpError } = await supabase.auth.signInWithOtp({
     email: contacto.data.email,
     options: { shouldCreateUser: false, emailRedirectTo: `${origin}/api/auth/callback` },
   });
+  // La cita ya quedó creada aunque esto falle (ver notificarCambioCita arriba);
+  // solo dejamos rastro en logs para poder ayudar a un paciente que reclame no
+  // haber recibido el link mágico.
+  if (otpError) {
+    console.error(
+      `No se pudo enviar el link mágico a ${contacto.data.email} (cita ${resultado.citaId}): ${otpError.message}`,
+    );
+  }
 
   return { success: true as const, citaId: resultado.citaId };
 }
