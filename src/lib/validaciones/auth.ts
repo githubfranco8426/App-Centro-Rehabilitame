@@ -15,3 +15,13 @@ export const registroSchema = z.object({
 });
 
 export type RegistroInput = z.infer<typeof registroSchema>;
+
+// Reserva sin contraseña: la cuenta se crea (o reutiliza) automáticamente y
+// el paciente entra luego con un link mágico enviado a su email.
+export const contactoReservaSchema = z.object({
+  nombre: z.string().min(2, "Ingresá tu nombre completo"),
+  telefono: z.string().min(6, "Ingresá un teléfono válido"),
+  email: z.email("Ingresá un email válido"),
+});
+
+export type ContactoReservaInput = z.infer<typeof contactoReservaSchema>;

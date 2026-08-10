@@ -2,10 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { fromZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
-import { loginSchema, registroSchema } from "@/lib/validaciones/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { contactoReservaSchema } from "@/lib/validaciones/auth";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 import { LEAD_TIME_MINUTOS_PACIENTE, puedeGestionarCita } from "@/lib/citas/reglas";
 import { notificarCambioCita } from "@/lib/email/notificar";
@@ -57,41 +59,67 @@ function parseReserva(formData: FormData) {
   });
 }
 
-export async function registrarYReservar(formData: FormData) {
+/**
+ * Reserva sin contraseña: solo nombre + teléfono + email. Si ya existe una
+ * cuenta con ese email la reutiliza; si no, la crea vía admin API (sin
+ * contraseña). La cita se inserta con el cliente admin porque en este punto
+ * el navegador todavía no tiene sesión — luego se manda un link mágico para
+ * que el paciente pueda entrar a "Mis horas" sin necesitar contraseña nunca.
+ */
+export async function reservarConContacto(formData: FormData) {
   const reserva = parseReserva(formData);
-  const registro = registroSchema.safeParse({
+  const contacto = contactoReservaSchema.safeParse({
     nombre: formData.get("nombre"),
     telefono: formData.get("telefono"),
     email: formData.get("email"),
-    password: formData.get("password"),
   });
 
   if (!reserva.success) {
     return { error: "El horario elegido ya no es válido. Volvé a intentar." };
   }
-  if (!registro.success) {
-    return { error: registro.error.issues[0]?.message ?? "Datos inválidos." };
+  if (!contacto.success) {
+    return { error: contacto.error.issues[0]?.message ?? "Datos inválidos." };
   }
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: registro.data.email,
-    password: registro.data.password,
-    options: { data: { nombre: registro.data.nombre, telefono: registro.data.telefono } },
-  });
+  const admin = createAdminClient();
 
-  if (error || !data.user) {
-    return { error: "No se pudo crear la cuenta: " + (error?.message ?? "") };
+  const { data: perfilExistente } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", contacto.data.email)
+    .maybeSingle();
+
+  let pacienteId = perfilExistente?.id as string | undefined;
+
+  if (!pacienteId) {
+    const { data: nuevoUsuario, error: crearError } = await admin.auth.admin.createUser({
+      email: contacto.data.email,
+      email_confirm: true,
+      user_metadata: { nombre: contacto.data.nombre, telefono: contacto.data.telefono },
+    });
+    if (crearError || !nuevoUsuario.user) {
+      return { error: "No se pudo crear la cuenta: " + (crearError?.message ?? "") };
+    }
+    pacienteId = nuevoUsuario.user.id;
   }
 
-  const resultado = await crearCita(supabase, data.user.id, reserva.data);
+  const resultado = await crearCita(admin, pacienteId, reserva.data);
   if ("error" in resultado) {
     return { error: resultado.error };
   }
 
-  await notificarCambioCita(supabase, resultado.citaId, "confirmacion");
-  await sincronizarCreacion(supabase, resultado.citaId);
-  redirect("/mis-horas");
+  await notificarCambioCita(admin, resultado.citaId, "confirmacion");
+  await sincronizarCreacion(admin, resultado.citaId);
+
+  const headersList = await headers();
+  const origin = headersList.get("origin") ?? `https://${headersList.get("host")}`;
+  const supabase = await createClient();
+  await supabase.auth.signInWithOtp({
+    email: contacto.data.email,
+    options: { shouldCreateUser: false, emailRedirectTo: `${origin}/api/auth/callback` },
+  });
+
+  return { success: true as const, citaId: resultado.citaId };
 }
 
 const ESTADOS_CITA = ["pendiente", "confirmada", "cancelada", "completada", "no_asistio"] as const;
@@ -203,37 +231,6 @@ export async function reagendarCitaAdmin(citaId: string, formData: FormData): Pr
 
   revalidatePath("/admin");
   redirect(`/admin/citas/${nuevaCita.id}?reagendada=1`);
-}
-
-export async function iniciarSesionYReservar(formData: FormData) {
-  const reserva = parseReserva(formData);
-  const login = loginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
-
-  if (!reserva.success) {
-    return { error: "El horario elegido ya no es válido. Volvé a intentar." };
-  }
-  if (!login.success) {
-    return { error: "Datos inválidos. Revisá el email y la contraseña." };
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword(login.data);
-
-  if (error || !data.user) {
-    return { error: "Email o contraseña incorrectos." };
-  }
-
-  const resultado = await crearCita(supabase, data.user.id, reserva.data);
-  if ("error" in resultado) {
-    return { error: resultado.error };
-  }
-
-  await notificarCambioCita(supabase, resultado.citaId, "confirmacion");
-  await sincronizarCreacion(supabase, resultado.citaId);
-  redirect("/mis-horas");
 }
 
 export async function cancelarCitaPaciente(citaId: string): Promise<void> {

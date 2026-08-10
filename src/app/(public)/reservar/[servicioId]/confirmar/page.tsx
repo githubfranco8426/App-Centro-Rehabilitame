@@ -52,7 +52,7 @@ export default async function ConfirmarReservaPage({
 
       <main className="relative grid w-full max-w-4xl flex-1 gap-6 px-6 py-16 lg:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">
-          <ReservaPasos pasoActual={3} servicioId={servicioId} titulo="Creá tu cuenta para confirmar" />
+          <ReservaPasos pasoActual={3} servicioId={servicioId} titulo="Confirmá tus datos" />
 
           <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 rounded-3xl border border-white/40 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] delay-100 duration-700 sm:p-6 dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
             <ConfirmarReservaForm

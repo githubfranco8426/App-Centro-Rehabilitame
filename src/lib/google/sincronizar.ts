@@ -26,7 +26,7 @@ export async function sincronizarCreacion(supabase: SupabaseClient, citaId: stri
 
     const eventId = await crearEventoGoogle(cita.profesional_id, {
       resumen: `${servicio?.nombre ?? "Cita"} — ${paciente?.nombre ?? ""}`.trim(),
-      descripcion: "Reservado desde Rehabilita.me",
+      descripcion: "Reservado desde Centro Rehabilita.me",
       inicioIso: cita.fecha_inicio,
       finIso: cita.fecha_fin,
     });

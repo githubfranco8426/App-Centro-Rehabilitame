@@ -17,7 +17,7 @@ export function ConfirmacionEmail({
   return (
     <Html>
       <Head />
-      <Preview>Confirmamos tu hora en Rehabilita.me</Preview>
+      <Preview>Confirmamos tu hora en Centro Rehabilita.me</Preview>
       <Body style={bodyStyle}>
         <Container style={containerStyle}>
           <Heading style={headingStyle}>¡Hora confirmada, {pacienteNombre}!</Heading>

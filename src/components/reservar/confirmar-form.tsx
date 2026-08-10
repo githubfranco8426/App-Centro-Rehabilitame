@@ -3,12 +3,13 @@
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registrarYReservar, iniciarSesionYReservar } from "@/lib/citas/actions";
-import { loginSchema, registroSchema, type LoginInput, type RegistroInput } from "@/lib/validaciones/auth";
+import { reservarConContacto } from "@/lib/citas/actions";
+import { contactoReservaSchema, type ContactoReservaInput } from "@/lib/validaciones/auth";
+import { whatsappLink } from "@/lib/whatsapp";
 
 type ReservaInfo = {
   servicioId: string;
@@ -29,114 +30,86 @@ function reservaFormData(reserva: ReservaInfo) {
 export function ConfirmarReservaForm(reserva: ReservaInfo) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirmada, setConfirmada] = useState(false);
 
-  const registroForm = useForm<RegistroInput>({ resolver: zodResolver(registroSchema) });
-  const loginForm = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
+  const form = useForm<ContactoReservaInput>({ resolver: zodResolver(contactoReservaSchema) });
 
-  function onRegistro(data: RegistroInput) {
+  function onSubmit(data: ContactoReservaInput) {
     setError(null);
     const formData = reservaFormData(reserva);
     formData.set("nombre", data.nombre);
     formData.set("telefono", data.telefono);
     formData.set("email", data.email);
-    formData.set("password", data.password);
     startTransition(async () => {
-      const result = await registrarYReservar(formData);
-      if (result?.error) setError(result.error);
+      const result = await reservarConContacto(formData);
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      setConfirmada(true);
     });
   }
 
-  function onLogin(data: LoginInput) {
-    setError(null);
-    const formData = reservaFormData(reserva);
-    formData.set("email", data.email);
-    formData.set("password", data.password);
-    startTransition(async () => {
-      const result = await iniciarSesionYReservar(formData);
-      if (result?.error) setError(result.error);
-    });
+  if (confirmada) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6 text-center">
+        <CheckCircle2 className="size-12 text-emerald-500" />
+        <div>
+          <p className="font-heading text-lg font-medium">¡Reserva confirmada!</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Te mandamos los detalles a tu email, junto con un link para que puedas entrar a
+            &quot;Mis horas&quot; cuando quieras, sin necesitar contraseña.
+          </p>
+        </div>
+        <div className="mt-2 flex flex-col gap-2 text-sm text-muted-foreground">
+          <p>Sin costo por cancelar.</p>
+          <p>
+            También puedes ver o consultar tu hora luego por WhatsApp:{" "}
+            <a
+              href={whatsappLink("Hola, quiero ver los detalles de mi hora reservada.")}
+              target="_blank"
+              rel="noopener"
+              className="font-medium text-emerald-600 underline underline-offset-2 hover:text-emerald-700"
+            >
+              +56 9 3738 1137
+            </a>
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <Tabs defaultValue="crear-cuenta">
-      <TabsList className="w-full">
-        <TabsTrigger value="crear-cuenta" className="flex-1">
-          Crear cuenta
-        </TabsTrigger>
-        <TabsTrigger value="iniciar-sesion" className="flex-1">
-          Iniciar sesión
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="crear-cuenta">
-        <form onSubmit={registroForm.handleSubmit(onRegistro)} className="flex flex-col gap-4 pt-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="nombre">Nombre completo</Label>
-            <Input id="nombre" autoComplete="name" {...registroForm.register("nombre")} />
-            {registroForm.formState.errors.nombre && (
-              <p className="text-sm text-red-600">{registroForm.formState.errors.nombre.message}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="telefono">Teléfono</Label>
-            <Input id="telefono" type="tel" autoComplete="tel" {...registroForm.register("telefono")} />
-            {registroForm.formState.errors.telefono && (
-              <p className="text-sm text-red-600">{registroForm.formState.errors.telefono.message}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email-registro">Email</Label>
-            <Input id="email-registro" type="email" autoComplete="email" {...registroForm.register("email")} />
-            {registroForm.formState.errors.email && (
-              <p className="text-sm text-red-600">{registroForm.formState.errors.email.message}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="password-registro">Contraseña</Label>
-            <Input
-              id="password-registro"
-              type="password"
-              autoComplete="new-password"
-              {...registroForm.register("password")}
-            />
-            {registroForm.formState.errors.password && (
-              <p className="text-sm text-red-600">{registroForm.formState.errors.password.message}</p>
-            )}
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" disabled={pending}>
-            {pending ? "Reservando..." : "Crear cuenta y reservar"}
-          </Button>
-        </form>
-      </TabsContent>
-
-      <TabsContent value="iniciar-sesion">
-        <form onSubmit={loginForm.handleSubmit(onLogin)} className="flex flex-col gap-4 pt-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="email-login">Email</Label>
-            <Input id="email-login" type="email" autoComplete="email" {...loginForm.register("email")} />
-            {loginForm.formState.errors.email && (
-              <p className="text-sm text-red-600">{loginForm.formState.errors.email.message}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="password-login">Contraseña</Label>
-            <Input
-              id="password-login"
-              type="password"
-              autoComplete="current-password"
-              {...loginForm.register("password")}
-            />
-            {loginForm.formState.errors.password && (
-              <p className="text-sm text-red-600">{loginForm.formState.errors.password.message}</p>
-            )}
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" disabled={pending}>
-            {pending ? "Reservando..." : "Iniciar sesión y reservar"}
-          </Button>
-        </form>
-      </TabsContent>
-    </Tabs>
+    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        Solo necesitamos tus datos de contacto — sin contraseña. Vas a poder gestionar tu hora
+        luego con un link que te mandamos por email.
+      </p>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="nombre">Nombre completo</Label>
+        <Input id="nombre" autoComplete="name" {...form.register("nombre")} />
+        {form.formState.errors.nombre && (
+          <p className="text-sm text-red-600">{form.formState.errors.nombre.message}</p>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="telefono">Teléfono</Label>
+        <Input id="telefono" type="tel" autoComplete="tel" {...form.register("telefono")} />
+        {form.formState.errors.telefono && (
+          <p className="text-sm text-red-600">{form.formState.errors.telefono.message}</p>
+        )}
+      </div>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="email">Email</Label>
+        <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
+        {form.formState.errors.email && (
+          <p className="text-sm text-red-600">{form.formState.errors.email.message}</p>
+        )}
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <Button type="submit" disabled={pending}>
+        {pending ? "Reservando..." : "Confirmar reserva"}
+      </Button>
+    </form>
   );
 }

@@ -15,12 +15,12 @@ export async function SiteHeader() {
       <Link href="/" className="flex items-center gap-2 font-semibold">
         <Image
           src="/logo.jpg"
-          alt="Rehabilita.me"
+          alt="Centro Rehabilita.me"
           width={32}
           height={32}
           className="size-8 rounded-full object-cover"
         />
-        Centro de Rehabilitación
+        Centro Rehabilita.me
       </Link>
       <nav className="flex items-center gap-4 text-sm">
         {user ? (

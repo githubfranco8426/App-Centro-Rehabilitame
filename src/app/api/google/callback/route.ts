@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       return irA(
         `/admin/profesionales/${profesionalId}?error=` +
           encodeURIComponent(
-            "Google no envió permiso de acceso permanente. Andá a myaccount.google.com/permissions, quitá el acceso de Rehabilita.me y volvé a intentar.",
+            "Google no envió permiso de acceso permanente. Andá a myaccount.google.com/permissions, quitá el acceso de Centro Rehabilita.me y volvé a intentar.",
           ),
       );
     }

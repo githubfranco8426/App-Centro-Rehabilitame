@@ -11,9 +11,9 @@ import { ReagendamientoEmail } from "./plantillas/reagendamiento";
 export type TipoNotificacion = "confirmacion" | "cancelacion" | "reagendamiento";
 
 const ASUNTOS: Record<TipoNotificacion, string> = {
-  confirmacion: "Confirmamos tu hora — Rehabilita.me",
-  cancelacion: "Tu hora fue cancelada — Rehabilita.me",
-  reagendamiento: "Tu hora fue reagendada — Rehabilita.me",
+  confirmacion: "Confirmamos tu hora — Centro Rehabilita.me",
+  cancelacion: "Tu hora fue cancelada — Centro Rehabilita.me",
+  reagendamiento: "Tu hora fue reagendada — Centro Rehabilita.me",
 };
 
 function formatearFecha(iso: string) {

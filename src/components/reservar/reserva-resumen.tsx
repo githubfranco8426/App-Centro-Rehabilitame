@@ -1,5 +1,6 @@
 import { Clock, User, Calendar, Wallet } from "lucide-react";
 import { formatCLP } from "@/lib/dinero";
+import { whatsappLink } from "@/lib/whatsapp";
 
 export function ReservaResumen({
   servicioNombre,
@@ -36,6 +37,20 @@ export function ReservaResumen({
             </div>
           ))}
         </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-1.5 text-xs text-muted-foreground">
+        <p>Sin costo por cancelar.</p>
+        <p>
+          Puedes ver tu hora luego por WhatsApp:{" "}
+          <a
+            href={whatsappLink()}
+            target="_blank"
+            rel="noopener"
+            className="font-medium text-emerald-600 underline underline-offset-2 hover:text-emerald-700"
+          >
+            +56 9 3738 1137
+          </a>
+        </p>
       </div>
     </div>
   );
