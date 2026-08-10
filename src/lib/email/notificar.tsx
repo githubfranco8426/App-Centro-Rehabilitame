@@ -7,6 +7,7 @@ import { getResendClient, EMAIL_FROM, ADMIN_NOTIFICATION_EMAIL } from "./resend"
 import { ConfirmacionEmail } from "./plantillas/confirmacion";
 import { CancelacionEmail } from "./plantillas/cancelacion";
 import { ReagendamientoEmail } from "./plantillas/reagendamiento";
+import { NuevaReservaAdminEmail } from "./plantillas/nueva-reserva-admin";
 
 export type TipoNotificacion = "confirmacion" | "cancelacion" | "reagendamiento";
 
@@ -38,7 +39,7 @@ export async function notificarCambioCita(
     const { data: cita } = await supabase
       .from("citas")
       .select(
-        "fecha_inicio, profiles!citas_paciente_id_fkey(nombre, email), profesionales(nombre), servicios(nombre)",
+        "fecha_inicio, profiles!citas_paciente_id_fkey(nombre, email, telefono), profesionales(nombre), servicios(nombre)",
       )
       .eq("id", citaId)
       .single();
@@ -85,8 +86,17 @@ export async function notificarCambioCita(
         .emails.send({
           from: EMAIL_FROM,
           to: ADMIN_NOTIFICATION_EMAIL,
-          subject: `Nueva reserva — ${props.servicioNombre || "Sin servicio"}`,
-          text: `Nueva reserva confirmada.\n\nPaciente: ${props.pacienteNombre}\nServicio: ${props.servicioNombre}\nProfesional: ${props.profesionalNombre}\nFecha: ${props.fechaFormateada}`,
+          subject: `Nueva reserva — ${props.pacienteNombre}`,
+          react: (
+            <NuevaReservaAdminEmail
+              pacienteNombre={props.pacienteNombre}
+              pacienteEmail={paciente.email}
+              pacienteTelefono={paciente.telefono ?? undefined}
+              servicioNombre={props.servicioNombre}
+              profesionalNombre={props.profesionalNombre}
+              fechaFormateada={props.fechaFormateada}
+            />
+          ),
         })
         .catch((err) => console.error("No se pudo avisar al centro de la nueva reserva:", err));
     }
