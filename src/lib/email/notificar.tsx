@@ -39,7 +39,7 @@ export async function notificarCambioCita(
     const { data: cita } = await supabase
       .from("citas")
       .select(
-        "fecha_inicio, profiles!citas_paciente_id_fkey(nombre, email, telefono), profesionales(nombre), servicios(nombre)",
+        "fecha_inicio, profiles!citas_paciente_id_fkey(nombre, email, telefono), profesionales(nombre, especialidades(nombre), sedes(nombre, direccion)), servicios(nombre)",
       )
       .eq("id", citaId)
       .single();
@@ -49,13 +49,20 @@ export async function notificarCambioCita(
     const paciente = unico(cita.profiles);
     const profesional = unico(cita.profesionales);
     const servicio = unico(cita.servicios);
+    const especialidad = profesional ? unico(profesional.especialidades) : null;
+    const sede = profesional ? unico(profesional.sedes) : null;
 
     if (!paciente?.email) throw new Error("El paciente no tiene email registrado.");
 
     const props = {
       pacienteNombre: paciente.nombre,
+      pacienteTelefono: paciente.telefono ?? undefined,
+      pacienteEmail: paciente.email,
       servicioNombre: servicio?.nombre ?? "",
       profesionalNombre: profesional?.nombre ?? "",
+      especialidadNombre: especialidad?.nombre ?? undefined,
+      sedeNombre: sede?.nombre ?? undefined,
+      sedeDireccion: sede?.direccion ?? undefined,
       fechaFormateada: formatearFecha(cita.fecha_inicio),
       fechaAnteriorFormateada: opts?.fechaAnteriorIso ? formatearFecha(opts.fechaAnteriorIso) : undefined,
     };
