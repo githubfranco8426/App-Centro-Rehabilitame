@@ -1,24 +1,21 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { reservarConContacto } from "@/lib/citas/actions";
-import { contactoReservaSchema, type ContactoReservaInput } from "@/lib/validaciones/auth";
+import type { ContactoReservaInput } from "@/lib/validaciones/auth";
 import { whatsappLink } from "@/lib/whatsapp";
 
 type ReservaInfo = {
+  contacto: ContactoReservaInput;
   servicioId: string;
   profesionalId: string;
   fechaInicio: string;
   fechaFin: string;
 };
 
-function reservaFormData(reserva: ReservaInfo) {
+function reservaFormData(reserva: Omit<ReservaInfo, "contacto">) {
   const formData = new FormData();
   formData.set("servicioId", reserva.servicioId);
   formData.set("profesionalId", reserva.profesionalId);
@@ -27,21 +24,15 @@ function reservaFormData(reserva: ReservaInfo) {
   return formData;
 }
 
-export function ConfirmarReservaForm(reserva: ReservaInfo) {
+export function ConfirmarReservaForm({ contacto, ...reserva }: ReservaInfo) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [confirmada, setConfirmada] = useState(false);
 
-  const form = useForm<ContactoReservaInput>({ resolver: zodResolver(contactoReservaSchema) });
-
-  function onSubmit(data: ContactoReservaInput) {
+  function onConfirmar() {
     setError(null);
-    const formData = reservaFormData(reserva);
-    formData.set("nombre", data.nombre);
-    formData.set("telefono", data.telefono);
-    formData.set("email", data.email);
     startTransition(async () => {
-      const result = await reservarConContacto(formData);
+      const result = await reservarConContacto(reservaFormData(reserva));
       if (result?.error) {
         setError(result.error);
         return;
@@ -79,37 +70,28 @@ export function ConfirmarReservaForm(reserva: ReservaInfo) {
     );
   }
 
+  const datos: { etiqueta: string; valor: string }[] = [
+    { etiqueta: "RUT", valor: contacto.rut },
+    { etiqueta: "Nombre", valor: contacto.nombre },
+    { etiqueta: "Teléfono", valor: contacto.telefono },
+    { etiqueta: "Email", valor: contacto.email },
+  ];
+
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        Solo necesitamos tus datos de contacto — sin contraseña. Vas a poder gestionar tu hora
-        luego con un link que te mandamos por email.
-      </p>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="nombre">Nombre completo</Label>
-        <Input id="nombre" autoComplete="name" {...form.register("nombre")} />
-        {form.formState.errors.nombre && (
-          <p className="text-sm text-red-600">{form.formState.errors.nombre.message}</p>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="telefono">Teléfono</Label>
-        <Input id="telefono" type="tel" autoComplete="tel" {...form.register("telefono")} />
-        {form.formState.errors.telefono && (
-          <p className="text-sm text-red-600">{form.formState.errors.telefono.message}</p>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
-        {form.formState.errors.email && (
-          <p className="text-sm text-red-600">{form.formState.errors.email.message}</p>
-        )}
-      </div>
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">Revisa tus datos antes de confirmar.</p>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-white/40 bg-white/40 p-4 text-sm dark:border-white/10 dark:bg-white/5">
+        {datos.map(({ etiqueta, valor }) => (
+          <div key={etiqueta} className="flex flex-col gap-0.5">
+            <dt className="text-xs text-muted-foreground">{etiqueta}</dt>
+            <dd className="font-medium">{valor}</dd>
+          </div>
+        ))}
+      </dl>
       {error && <p className="text-sm text-red-600">{error}</p>}
-      <Button type="submit" disabled={pending}>
+      <Button type="button" onClick={onConfirmar} disabled={pending}>
         {pending ? "Reservando..." : "Confirmar reserva"}
       </Button>
-    </form>
+    </div>
   );
 }

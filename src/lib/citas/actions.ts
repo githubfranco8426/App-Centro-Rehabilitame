@@ -7,12 +7,18 @@ import { z } from "zod";
 import { fromZonedTime } from "date-fns-tz";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { contactoReservaSchema } from "@/lib/validaciones/auth";
+import { rutSchema, datosContactoSchema } from "@/lib/validaciones/auth";
+import { formatearRut } from "@/lib/validaciones/rut";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 import { LEAD_TIME_MINUTOS_PACIENTE, puedeGestionarCita } from "@/lib/citas/reglas";
 import { notificarCambioCita } from "@/lib/email/notificar";
 import { sincronizarCancelacion, sincronizarCreacion } from "@/lib/google/sincronizar";
 import { unico } from "@/lib/utils";
+import {
+  guardarContactoBorrador,
+  obtenerContactoBorrador,
+  obtenerContactoCompleto,
+} from "@/lib/citas/borrador-contacto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const reservaSchema = z.object({
@@ -60,25 +66,96 @@ function parseReserva(formData: FormData) {
 }
 
 /**
- * Reserva sin contraseña: solo nombre + teléfono + email. Si ya existe una
- * cuenta con ese email la reutiliza; si no, la crea vía admin API (sin
+ * Paso 1a de /reservar/identificacion: solo pide el RUT. Si ya existe un
+ * paciente con ese RUT (reservó antes), reutiliza sus datos guardados y
+ * salta directo a elegir servicio — solo a un paciente nuevo se le piden
+ * nombre/teléfono/email (ver completarIdentificacion). La búsqueda usa el
+ * cliente admin porque un visitante anónimo no tiene permiso para leer
+ * `profiles` vía RLS.
+ */
+export async function identificarPorRut(formData: FormData) {
+  const especialidadId = formData.get("especialidadId")?.toString();
+  const parsed = rutSchema.safeParse({ rut: formData.get("rut") });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "RUT inválido." };
+  }
+
+  const rut = formatearRut(parsed.data.rut);
+  const admin = createAdminClient();
+  const { data: perfil } = await admin
+    .from("profiles")
+    .select("nombre, telefono, email")
+    .eq("rut", rut)
+    .maybeSingle();
+
+  if (perfil) {
+    await guardarContactoBorrador({
+      rut,
+      nombre: perfil.nombre,
+      telefono: perfil.telefono ?? "",
+      email: perfil.email,
+    });
+    redirect(especialidadId ? `/reservar?especialidad=${especialidadId}` : "/reservar");
+  }
+
+  await guardarContactoBorrador({ rut });
+  redirect(
+    especialidadId
+      ? `/reservar/identificacion?especialidad=${especialidadId}`
+      : "/reservar/identificacion",
+  );
+}
+
+/**
+ * Paso 1b de /reservar/identificacion: solo se muestra cuando el RUT no
+ * coincide con ningún paciente existente. Completa nombre/teléfono/email en
+ * la misma cookie que ya tiene el RUT.
+ */
+export async function completarIdentificacion(formData: FormData) {
+  const especialidadId = formData.get("especialidadId")?.toString();
+  const actual = await obtenerContactoBorrador();
+
+  if (!actual?.rut) {
+    redirect(
+      especialidadId
+        ? `/reservar/identificacion?especialidad=${especialidadId}`
+        : "/reservar/identificacion",
+    );
+  }
+
+  const datos = datosContactoSchema.safeParse({
+    nombre: formData.get("nombre"),
+    telefono: formData.get("telefono"),
+    email: formData.get("email"),
+  });
+
+  if (!datos.success) {
+    return { error: datos.error.issues[0]?.message ?? "Datos inválidos." };
+  }
+
+  await guardarContactoBorrador({ rut: actual.rut, ...datos.data });
+  redirect(especialidadId ? `/reservar?especialidad=${especialidadId}` : "/reservar");
+}
+
+/**
+ * Reserva sin contraseña: los datos de contacto ya se guardaron en la
+ * cookie de /reservar/identificacion (ver borrador-contacto.ts) — acá solo
+ * se leen. Si ya existe una cuenta con ese email la reutiliza (y sincroniza
+ * rut/nombre/teléfono por si cambiaron); si no, la crea vía admin API (sin
  * contraseña). La cita se inserta con el cliente admin porque en este punto
  * el navegador todavía no tiene sesión — luego se manda un link mágico para
  * que el paciente pueda entrar a "Mis horas" sin necesitar contraseña nunca.
  */
 export async function reservarConContacto(formData: FormData) {
   const reserva = parseReserva(formData);
-  const contacto = contactoReservaSchema.safeParse({
-    nombre: formData.get("nombre"),
-    telefono: formData.get("telefono"),
-    email: formData.get("email"),
-  });
+  const contacto = await obtenerContactoCompleto();
 
   if (!reserva.success) {
     return { error: "El horario elegido ya no es válido. Volvé a intentar." };
   }
-  if (!contacto.success) {
-    return { error: contacto.error.issues[0]?.message ?? "Datos inválidos." };
+  if (!contacto) {
+    return { error: "Tu identificación expiró. Volvé a empezar la reserva." };
   }
 
   const admin = createAdminClient();
@@ -86,21 +163,26 @@ export async function reservarConContacto(formData: FormData) {
   const { data: perfilExistente } = await admin
     .from("profiles")
     .select("id")
-    .eq("email", contacto.data.email)
+    .eq("email", contacto.email)
     .maybeSingle();
 
   let pacienteId = perfilExistente?.id as string | undefined;
 
   if (!pacienteId) {
     const { data: nuevoUsuario, error: crearError } = await admin.auth.admin.createUser({
-      email: contacto.data.email,
+      email: contacto.email,
       email_confirm: true,
-      user_metadata: { nombre: contacto.data.nombre, telefono: contacto.data.telefono },
+      user_metadata: { nombre: contacto.nombre, telefono: contacto.telefono, rut: contacto.rut },
     });
     if (crearError || !nuevoUsuario.user) {
       return { error: "No se pudo crear la cuenta: " + (crearError?.message ?? "") };
     }
     pacienteId = nuevoUsuario.user.id;
+  } else {
+    await admin
+      .from("profiles")
+      .update({ nombre: contacto.nombre, telefono: contacto.telefono, rut: contacto.rut })
+      .eq("id", pacienteId);
   }
 
   const resultado = await crearCita(admin, pacienteId, reserva.data);
@@ -115,7 +197,7 @@ export async function reservarConContacto(formData: FormData) {
   const origin = headersList.get("origin") ?? `https://${headersList.get("host")}`;
   const supabase = await createClient();
   const { error: otpError } = await supabase.auth.signInWithOtp({
-    email: contacto.data.email,
+    email: contacto.email,
     options: { shouldCreateUser: false, emailRedirectTo: `${origin}/api/auth/callback` },
   });
   // La cita ya quedó creada aunque esto falle (ver notificarCambioCita arriba);
@@ -123,10 +205,17 @@ export async function reservarConContacto(formData: FormData) {
   // haber recibido el link mágico.
   if (otpError) {
     console.error(
-      `No se pudo enviar el link mágico a ${contacto.data.email} (cita ${resultado.citaId}): ${otpError.message}`,
+      `No se pudo enviar el link mágico a ${contacto.email} (cita ${resultado.citaId}): ${otpError.message}`,
     );
   }
 
+  // Ojo: NO se limpia la cookie de identificación acá. Escribir cookies
+  // dentro de una Server Action invalida el Router Cache y fuerza que Next
+  // vuelva a renderizar esta misma página del lado del servidor antes de
+  // que el cliente llegue a mostrar "¡Reserva confirmada!" — como esa
+  // página redirige a /reservar/identificacion si no hay cookie, el
+  // resultado exitoso nunca llegaba a verse. La cookie ya expira sola a
+  // los 30 minutos (ver borrador-contacto.ts).
   return { success: true as const, citaId: resultado.citaId };
 }
 

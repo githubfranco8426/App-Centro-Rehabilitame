@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { addDays, format } from "date-fns";
 import { formatInTimeZone, toZonedTime } from "date-fns-tz";
 import { es } from "date-fns/locale";
@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { ZONA_HORARIA } from "@/lib/tiempo";
 import { obtenerSlotsDisponibles } from "@/lib/citas/disponibilidad";
+import { obtenerContactoCompleto } from "@/lib/citas/borrador-contacto";
 import { unico } from "@/lib/utils";
 import { LiquidBackground } from "@/components/liquid-background";
 import { ReservaPasos } from "@/components/reservar/reserva-pasos";
@@ -45,6 +46,11 @@ export default async function ElegirHorarioPage({
     .single();
 
   if (!servicio) notFound();
+
+  const contacto = await obtenerContactoCompleto();
+  if (!contacto) {
+    redirect(`/reservar/identificacion?especialidad=${servicio.especialidad_id}`);
+  }
 
   const especialidadNombre = unico(servicio.especialidades)?.nombre;
 
@@ -87,7 +93,8 @@ export default async function ElegirHorarioPage({
       <main className="relative grid w-full max-w-4xl flex-1 gap-6 px-6 py-16 lg:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">
           <ReservaPasos
-            pasoActual={2}
+            pasoActual={3}
+            especialidadId={servicio.especialidad_id}
             servicioId={servicioId}
             titulo="Selecciona fecha y hora de tu servicio"
           />

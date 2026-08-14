@@ -3,7 +3,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Paso = {
-  numero: 1 | 2 | 3;
+  numero: 1 | 2 | 3 | 4;
   etiqueta: string;
   href?: string;
 };
@@ -11,16 +11,23 @@ type Paso = {
 export function ReservaPasos({
   pasoActual,
   titulo,
+  especialidadId,
   servicioId,
 }: {
-  pasoActual: 1 | 2 | 3;
+  pasoActual: 1 | 2 | 3 | 4;
   titulo?: string;
+  especialidadId?: string;
   servicioId?: string;
 }) {
   const pasos: Paso[] = [
-    { numero: 1, etiqueta: "Servicio", href: "/reservar" },
-    { numero: 2, etiqueta: "Fecha y hora", href: servicioId ? `/reservar/${servicioId}` : undefined },
-    { numero: 3, etiqueta: "Confirmar" },
+    {
+      numero: 1,
+      etiqueta: "Identificación",
+      href: especialidadId ? `/reservar/identificacion?especialidad=${especialidadId}` : "/reservar/identificacion",
+    },
+    { numero: 2, etiqueta: "Servicio", href: especialidadId ? `/reservar?especialidad=${especialidadId}` : "/reservar" },
+    { numero: 3, etiqueta: "Fecha y hora", href: servicioId ? `/reservar/${servicioId}` : undefined },
+    { numero: 4, etiqueta: "Confirmar" },
   ];
 
   return (
