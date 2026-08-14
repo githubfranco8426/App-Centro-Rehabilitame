@@ -85,7 +85,7 @@ export function DatosContactoForm({
     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         No encontramos una reserva anterior con el RUT <span className="font-medium">{rut}</span>.
-        Contanos tus datos — sin contraseña.
+        Necesitamos completar su perfil. Le tomará menos de 1 min.
       </p>
       <div className="flex flex-col gap-2">
         <Label htmlFor="nombre">Nombre completo</Label>
