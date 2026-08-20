@@ -16,7 +16,7 @@ type EventoInput = {
 
 export async function crearEventoGoogle(profesionalId: string, evento: EventoInput): Promise<string | null> {
   try {
-    const token = await obtenerAccessTokenValido(profesionalId);
+    const { token } = await obtenerAccessTokenValido(profesionalId);
     if (!token) return null;
 
     const res = await fetch(
@@ -44,7 +44,7 @@ export async function crearEventoGoogle(profesionalId: string, evento: EventoInp
 
 export async function eliminarEventoGoogle(profesionalId: string, eventId: string): Promise<void> {
   try {
-    const token = await obtenerAccessTokenValido(profesionalId);
+    const { token } = await obtenerAccessTokenValido(profesionalId);
     if (!token) return;
 
     const res = await fetch(
@@ -73,7 +73,7 @@ export async function obtenerCuposConsulta(
   hastaIso: string,
 ): Promise<{ start: string; end: string }[]> {
   try {
-    const token = await obtenerAccessTokenValido(profesionalId);
+    const { token } = await obtenerAccessTokenValido(profesionalId);
     if (!token) return [];
 
     const params = new URLSearchParams({

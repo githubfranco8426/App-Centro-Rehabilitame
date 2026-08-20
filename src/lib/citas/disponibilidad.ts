@@ -12,15 +12,23 @@ type Slot = { slot_inicio: string; slot_fin: string };
  * salen de sus eventos "Cupos de consulta" (su disponibilidad real varía por
  * turnos rotativos, no por un horario semanal fijo). Para el resto, se usa
  * la disponibilidad semanal fija configurada en /admin/profesionales.
+ *
+ * Si un profesional conectado tiene el token de Google roto (revocado,
+ * expirado), NO se usa el horario fijo como respaldo: para él, ese horario
+ * no representa su turno real y ofrecerlo igual arriesga choques (horas que
+ * en la app aparecen libres pero que el profesional en realidad no tiene).
+ * En ese caso se muestra "sin horarios" hasta que reconecte Google.
  */
 export async function obtenerSlotsDisponibles(
   supabase: SupabaseClient,
   params: { profesionalId: string; servicioId: string; fecha: Date; fechaStr: string },
 ): Promise<Slot[]> {
   const { profesionalId, servicioId, fecha, fechaStr } = params;
-  const token = await obtenerAccessTokenValido(profesionalId);
+  const { conectado, token } = await obtenerAccessTokenValido(profesionalId);
 
-  if (token) {
+  if (conectado) {
+    if (!token) return [];
+
     const inicioDia = fromZonedTime(`${fechaStr}T00:00:00`, ZONA_HORARIA);
     const finDia = fromZonedTime(`${format(addDays(fecha, 1), "yyyy-MM-dd")}T00:00:00`, ZONA_HORARIA);
     const cupos = await obtenerCuposConsulta(profesionalId, inicioDia.toISOString(), finDia.toISOString());
