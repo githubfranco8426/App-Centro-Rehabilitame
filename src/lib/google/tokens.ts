@@ -29,13 +29,22 @@ export async function obtenerAccessTokenValido(profesionalId: string): Promise<T
     return { accessToken: data.access_token!, calendarId: data.calendar_id };
   }
 
-  const tokens = await refrescarAccessToken(data.refresh_token);
-  const expira = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+  // Fail-open: si Google rechaza el refresh (token revocado, credenciales mal
+  // configuradas, etc.) no puede tumbar la pantalla de horarios — se trata
+  // igual que "profesional sin Google conectado" y el resto del flujo sigue
+  // con la disponibilidad semanal fija.
+  try {
+    const tokens = await refrescarAccessToken(data.refresh_token);
+    const expira = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-  await supabase
-    .from("profesional_google_tokens")
-    .update({ access_token: tokens.access_token, access_token_expira: expira })
-    .eq("profesional_id", profesionalId);
+    await supabase
+      .from("profesional_google_tokens")
+      .update({ access_token: tokens.access_token, access_token_expira: expira })
+      .eq("profesional_id", profesionalId);
 
-  return { accessToken: tokens.access_token, calendarId: data.calendar_id };
+    return { accessToken: tokens.access_token, calendarId: data.calendar_id };
+  } catch (err) {
+    console.error("Google Calendar (refrescar token):", err);
+    return null;
+  }
 }
