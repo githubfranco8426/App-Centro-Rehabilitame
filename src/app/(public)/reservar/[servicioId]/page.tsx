@@ -124,7 +124,7 @@ export default async function ElegirHorarioPage({
                           "flex shrink-0 flex-col items-center gap-0.5 rounded-2xl border border-transparent px-3 py-2 text-center text-xs transition-all",
                           activo
                             ? "bg-foreground text-background shadow-md"
-                            : "text-muted-foreground hover:border-primary/40 hover:bg-white/40 dark:hover:bg-white/5",
+                            : "text-muted-foreground hover:border-accent/40 hover:bg-white/40 dark:hover:bg-white/5",
                         )}
                       >
                         <span className="capitalize">{format(dia, "EEE", { locale: es })}</span>
@@ -154,7 +154,7 @@ export default async function ElegirHorarioPage({
                               <Link
                                 key={slot.slot_inicio}
                                 href={`/reservar/${servicioId}/confirmar?profesional=${profesional.id}&fechaInicio=${encodeURIComponent(slot.slot_inicio)}&fechaFin=${encodeURIComponent(slot.slot_fin)}`}
-                                className="rounded-xl border border-white/50 bg-white/40 px-3 py-2 text-center text-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:bg-primary hover:text-primary-foreground dark:border-white/10 dark:bg-white/5"
+                                className="rounded-xl border border-white/50 bg-white/40 px-3 py-2 text-center text-sm backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-accent hover:bg-accent hover:text-accent-foreground dark:border-white/10 dark:bg-white/5"
                               >
                                 {formatInTimeZone(new Date(slot.slot_inicio), ZONA_HORARIA, "HH:mm")}
                               </Link>

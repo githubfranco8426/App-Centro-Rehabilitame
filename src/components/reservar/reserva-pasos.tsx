@@ -45,8 +45,8 @@ export function ReservaPasos({
             <span
               className={cn(
                 "flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-colors",
-                activo && "bg-primary text-primary-foreground",
-                completado && "bg-primary/15 text-primary",
+                activo && "bg-accent text-accent-foreground",
+                completado && "bg-accent/15 text-accent",
                 !activo && !completado && "bg-muted text-muted-foreground",
               )}
             >
@@ -80,7 +80,7 @@ export function ReservaPasos({
                 <span
                   className={cn(
                     "h-px flex-1 rounded-full transition-colors",
-                    completado ? "bg-primary/40" : "bg-border",
+                    completado ? "bg-accent/40" : "bg-border",
                   )}
                 />
               )}
