@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Activity, Stethoscope, User } from "lucide-react";
+import { Activity } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { cn, unico } from "@/lib/utils";
 import { formatCLP } from "@/lib/dinero";
@@ -40,6 +40,8 @@ export default async function ReservarPage({
   // identificaste (/reservar/identificacion) — si falta cualquiera de las
   // dos cosas, primero hay que resolver eso.
   if (!especialidadId) {
+    if (!modo) redirect("/reservar?modo=especialidad");
+
     if (modo === "profesional") {
       const { data: profesionales } = await supabase
         .from("profesionales")
@@ -93,59 +95,16 @@ export default async function ReservarPage({
       );
     }
 
-    if (modo !== "especialidad") {
-      const opciones = [
-        {
-          href: "/reservar?modo=especialidad",
-          titulo: "Por especialidad",
-          descripcion: "Kinesiología, fonoaudiología o terapia ocupacional.",
-          Icono: Stethoscope,
-        },
-        {
-          href: "/reservar?modo=profesional",
-          titulo: "Por profesional",
-          descripcion: "Elegí directamente con quién atenderte.",
-          Icono: User,
-        },
-      ];
-
-      return (
-        <div className="relative flex flex-1 flex-col items-center overflow-hidden bg-zinc-50 dark:bg-black">
-          <LiquidBackground photo />
-          <main className="relative flex w-full max-w-2xl flex-1 flex-col gap-8 px-6 py-16">
-            <div>
-              <h1 className="font-heading text-2xl font-semibold tracking-tight">Reservar hora</h1>
-              <p className="mt-1 text-zinc-600 dark:text-zinc-400">¿Cómo quieres buscar tu hora?</p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {opciones.map(({ href, titulo, descripcion, Icono }, i) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="animate-in fade-in slide-in-from-bottom-4 group relative block h-full overflow-hidden rounded-2xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgb(0,0,0,0.12)] dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]"
-                  style={{ animationDelay: `${100 + i * 80}ms`, animationDuration: "600ms" }}
-                >
-                  <div className="glass-panel absolute inset-0" />
-                  <div className="glass-specular absolute inset-0" />
-                  <div className="relative flex flex-col items-center gap-3 p-8 text-center">
-                    <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/15 text-primary backdrop-blur-sm">
-                      <Icono className="size-6" />
-                    </div>
-                    <span className="font-heading text-base font-medium">{titulo}</span>
-                    <span className="text-sm text-muted-foreground">{descripcion}</span>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </main>
-        </div>
-      );
-    }
-
-    const { data: especialidades } = await supabase
-      .from("especialidades")
-      .select("id, nombre")
-      .order("created_at");
+    const [{ data: especialidades }, { data: profesionalesActivos }, { data: serviciosActivos }] = await Promise.all([
+      supabase.from("especialidades").select("id, nombre").order("created_at"),
+      supabase.from("profesionales").select("especialidad_id").eq("activo", true),
+      supabase.from("servicios").select("especialidad_id").eq("activo", true),
+    ]);
+    const especialidadesDisponibles = (especialidades ?? []).filter(
+      (especialidad) =>
+        profesionalesActivos?.some((profesional) => profesional.especialidad_id === especialidad.id) &&
+        serviciosActivos?.some((servicio) => servicio.especialidad_id === especialidad.id),
+    );
 
     return (
       <div className="relative flex flex-1 flex-col items-center overflow-hidden bg-zinc-50 dark:bg-black">
@@ -154,14 +113,17 @@ export default async function ReservarPage({
           <div>
             <h1 className="font-heading text-2xl font-semibold tracking-tight">Reservar hora</h1>
             <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-              ¿Qué especialidad necesitas?
+              ¿Qué atención necesitas?
             </p>
-            <Link href="/reservar" className="mt-1 inline-block text-sm underline text-muted-foreground">
-              ‹ Volver
+            <Link href="/" className="mt-1 inline-block text-sm underline text-muted-foreground">
+              ‹ Volver al inicio
+            </Link>
+            <Link href="/reservar?modo=profesional" className="ml-5 inline-block text-sm font-medium underline text-primary">
+              Prefiero elegir profesional
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            {(especialidades ?? []).map((especialidad, i) => {
+            {especialidadesDisponibles.map((especialidad, i) => {
               const Icono = iconoEspecialidad[especialidad.nombre] ?? Activity;
               const colores = colorEspecialidad[especialidad.nombre];
               return (
@@ -190,6 +152,15 @@ export default async function ReservarPage({
               );
             })}
           </div>
+          {especialidadesDisponibles.length === 0 && (
+            <p className="rounded-2xl bg-white p-6 text-sm text-muted-foreground shadow-sm">
+              En este momento no hay atenciones disponibles para reservar en línea. {" "}
+              <a href="https://wa.me/56937381137" className="font-medium text-primary underline">
+                Escríbenos por WhatsApp
+              </a>{" "}
+              para ayudarte a encontrar una hora.
+            </p>
+          )}
         </main>
       </div>
     );

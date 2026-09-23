@@ -30,8 +30,8 @@ export function RutForm({ especialidadId }: { especialidadId?: string }) {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        Identifícate con tu RUT — si ya reservaste antes, no vas a necesitar escribir tus datos de
-        nuevo.
+        Para continuar con la reserva, ingresa tu RUT. Si ya reservaste antes, recuperaremos tus
+        datos de contacto.
       </p>
       <div className="flex flex-col gap-2">
         <Label htmlFor="rut">RUT</Label>
@@ -85,7 +85,7 @@ export function DatosContactoForm({
     <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
         No encontramos una reserva anterior con el RUT <span className="font-medium">{rut}</span>.
-        Necesitamos completar su perfil. Le tomará menos de 1 min.
+        Completa tus datos de contacto para continuar.
       </p>
       <div className="flex flex-col gap-2">
         <Label htmlFor="nombre">Nombre completo</Label>

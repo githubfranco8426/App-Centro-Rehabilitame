@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const subscribe = () => () => {};
+const getSnapshot = () => window.self !== window.top;
+const getServerSnapshot = () => false;
 
 export function ConditionalHeader({ children }: { children: React.ReactNode }) {
-  const [embedded, setEmbedded] = useState(false);
-
-  useEffect(() => {
-    setEmbedded(window.self !== window.top);
-  }, []);
+  const embedded = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   if (embedded) return null;
   return <>{children}</>;

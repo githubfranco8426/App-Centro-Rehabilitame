@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { obtenerContactoBorrador } from "@/lib/citas/borrador-contacto";
 import { LiquidBackground } from "@/components/liquid-background";
 import { ReservaPasos } from "@/components/reservar/reserva-pasos";
@@ -37,6 +38,10 @@ export default async function IdentificacionPage({
           especialidadId={especialidadId}
           titulo={especialidadNombre ? `Reservar hora — ${especialidadNombre}` : "Reservar hora"}
         />
+
+        <Link href="/reservar?modo=especialidad" className="text-sm underline text-muted-foreground hover:text-foreground">
+          ‹ Cambiar tipo de atención
+        </Link>
 
         <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 rounded-3xl border border-white/40 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] delay-100 duration-700 sm:p-6 dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">
           {faltanDatos ? (

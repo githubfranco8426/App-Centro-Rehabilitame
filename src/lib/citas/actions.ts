@@ -49,7 +49,7 @@ async function crearCita(
 
   if (error || !data) {
     if (error?.code === "23P01") {
-      return { error: "Ese horario ya no está disponible. Elegí otro." };
+      return { error: "Ese horario ya no está disponible. Elige otro." };
     }
     return { error: "No se pudo crear la reserva: " + (error?.message ?? "") };
   }
@@ -152,10 +152,10 @@ export async function reservarConContacto(formData: FormData) {
   const contacto = await obtenerContactoCompleto();
 
   if (!reserva.success) {
-    return { error: "El horario elegido ya no es válido. Volvé a intentar." };
+    return { error: "El horario elegido ya no es válido. Vuelve a intentarlo." };
   }
   if (!contacto) {
-    return { error: "Tu identificación expiró. Volvé a empezar la reserva." };
+    return { error: "Tu identificación expiró. Vuelve a empezar la reserva." };
   }
 
   const admin = createAdminClient();
@@ -351,7 +351,7 @@ export async function cancelarCitaPaciente(citaId: string): Promise<void> {
   if (!puedeGestionarCita(cita.fecha_inicio, cita.estado)) {
     redirect(
       `/mis-horas?error=${encodeURIComponent(
-        `Para cancelar necesitás avisar con al menos ${LEAD_TIME_MINUTOS_PACIENTE / 60} horas de anticipación.`,
+        `Para cancelar necesitas avisar con al menos ${LEAD_TIME_MINUTOS_PACIENTE / 60} horas de anticipación.`,
       )}`,
     );
   }
@@ -390,7 +390,7 @@ export async function reagendarCitaPaciente(
   if (!puedeGestionarCita(cita.fecha_inicio, cita.estado)) {
     redirect(
       `/mis-horas?error=${encodeURIComponent(
-        `Para reagendar necesitás avisar con al menos ${LEAD_TIME_MINUTOS_PACIENTE / 60} horas de anticipación.`,
+        `Para reagendar necesitas avisar con al menos ${LEAD_TIME_MINUTOS_PACIENTE / 60} horas de anticipación.`,
       )}`,
     );
   }
@@ -414,7 +414,7 @@ export async function reagendarCitaPaciente(
   if (insertError || !nuevaCita) {
     const mensaje =
       insertError?.code === "23P01"
-        ? "Ese horario ya no está disponible. Elegí otro."
+        ? "Ese horario ya no está disponible. Elige otro."
         : "No se pudo reagendar: " + (insertError?.message ?? "");
     redirect(`${path}?error=${encodeURIComponent(mensaje)}`);
   }

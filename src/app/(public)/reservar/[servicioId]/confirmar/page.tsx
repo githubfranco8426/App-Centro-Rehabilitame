@@ -62,7 +62,7 @@ export default async function ConfirmarReservaPage({
             pasoActual={4}
             especialidadId={servicio.especialidad_id}
             servicioId={servicioId}
-            titulo="Confirmá tu reserva"
+            titulo="Confirma tu reserva"
           />
 
           <div className="glass-panel animate-in fade-in slide-in-from-bottom-4 rounded-3xl border border-white/40 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.06)] delay-100 duration-700 sm:p-6 dark:border-white/10 dark:shadow-[0_8px_30px_rgb(0,0,0,0.35)]">

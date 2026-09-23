@@ -39,7 +39,7 @@ export function ReservaPasos({
         {pasos.map((paso, i) => {
           const activo = paso.numero === pasoActual;
           const completado = paso.numero < pasoActual;
-          const puedeNavegar = Boolean(paso.href) && !activo;
+          const puedeNavegar = Boolean(paso.href) && completado;
 
           const circulo = (
             <span

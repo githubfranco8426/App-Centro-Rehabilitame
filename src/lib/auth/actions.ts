@@ -11,7 +11,7 @@ export async function login(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: "Datos inválidos. Revisá el email y la contraseña." };
+    return { error: "Datos inválidos. Revisa el email y la contraseña." };
   }
 
   const supabase = await createClient();
